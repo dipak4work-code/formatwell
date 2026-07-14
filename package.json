@@ -2,7 +2,7 @@
   "name": "formatwell",
   "version": "0.1.0",
   "private": true,
-  "description": "FormatWell — fast, privacy-first, in-browser JSON / XML / Markdown validator, formatter, and editor.",
+  "description": "FormatWell — fast, privacy-first, in-browser JSON / JSONL / XML / Markdown validator, formatter, and editor.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -11,7 +11,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "format": "prettier --write \"src/**/*.{ts,tsx,css}\""
+    "format": "prettier --write \"src/**/*.{ts,tsx,css}\"",
+    "deploy": "next build && wrangler pages deploy out --project-name=validateformat"
   },
   "dependencies": {
     "@codemirror/commands": "^6.10.4",

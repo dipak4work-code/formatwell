@@ -10,7 +10,7 @@ import { ToastProvider } from '@/components/ui/ToastProvider';
 export const metadata: Metadata = {
   metadataBase: new URL(SITE.url),
   title: {
-    default: `${SITE.name} — in-browser JSON, XML & Markdown tools`,
+    default: `${SITE.name} — in-browser JSON, JSONL, XML & Markdown tools`,
     template: `%s — ${SITE.name}`,
   },
   description: SITE.tagline,
@@ -19,7 +19,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: 'website',
     siteName: SITE.name,
-    title: `${SITE.name} — in-browser JSON, XML & Markdown tools`,
+    title: `${SITE.name} — in-browser JSON, JSONL, XML & Markdown tools`,
     description: SITE.tagline,
     url: SITE.url,
     locale: 'en_US',
@@ -27,7 +27,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: `${SITE.name} — in-browser JSON, XML & Markdown tools`,
+    title: `${SITE.name} — in-browser JSON, JSONL, XML & Markdown tools`,
     description: SITE.tagline,
     images: ['/og.svg'],
   },

@@ -18,7 +18,8 @@ export default function AboutPage() {
       <section className="flex flex-col gap-3 text-body text-muted">
         <p>
           <span className="text-ink">{SITE.name}</span> is a fast, privacy-first collection of
-          developer utilities for validating, formatting, and previewing JSON, XML, and Markdown.
+          developer utilities for validating, formatting, and previewing JSON, JSONL, XML, and
+          Markdown.
         </p>
         <p className="text-ink">{SITE.privacyPromise}</p>
         <p>
@@ -27,15 +28,6 @@ export default function AboutPage() {
           server. Parsing happens on-device, using Web Workers so large inputs never freeze the
           interface.
         </p>
-      </section>
-
-      <section className="flex flex-col gap-2">
-        <h2 className="font-mono text-section font-600 text-ink">Built with</h2>
-        <ul className="flex flex-col gap-1 text-body text-muted">
-          <li>Next.js (static export) + TypeScript</li>
-          <li>CodeMirror 6 for editing</li>
-          <li>Client-side parsers for JSON, XML, and Markdown</li>
-        </ul>
       </section>
     </article>
   );

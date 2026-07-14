@@ -32,6 +32,43 @@ const SNIPPETS: Record<ToolId, ReactNode> = {
       <div>{p('}')}</div>
     </>
   ),
+  jsonl: (
+    <>
+      <div>
+        {p('{')}
+        {k('"id"')}
+        {p(':')}
+        {n('1')}
+        {p(',')}
+        {k('"ok"')}
+        {p(':')}
+        {n('true')}
+        {p('}')}
+      </div>
+      <div>
+        {p('{')}
+        {k('"id"')}
+        {p(':')}
+        {n('2')}
+        {p(',')}
+        {k('"ok"')}
+        {p(':')}
+        {n('false')}
+        {p('}')}
+      </div>
+      <div>
+        {p('{')}
+        {k('"id"')}
+        {p(':')}
+        {n('3')}
+        {p(',')}
+        {k('"ok"')}
+        {p(':')}
+        {n('true')}
+        {p('}')}
+      </div>
+    </>
+  ),
   xml: (
     <>
       <div>
@@ -115,7 +152,7 @@ export function LandingContent() {
         <p className="max-w-2xl text-body text-muted">{SITE.privacyPromise}</p>
       </section>
 
-      <section aria-label="Tools" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <section aria-label="Tools" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {TOOLS.map((tool) => (
           <Link
             key={tool.id}

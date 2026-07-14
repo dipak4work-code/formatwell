@@ -3,6 +3,7 @@
 A fast, privacy-first, fully client-side developer utility with three tools:
 
 - **JSON** — viewer, formatter, validator (exact error line/column)
+- **JSONL / NDJSON** — per-line validator, minify, and JSON-array converter
 - **XML** — viewer, formatter, well-formedness validator
 - **Markdown** — live editor, sanitized preview, linter
 

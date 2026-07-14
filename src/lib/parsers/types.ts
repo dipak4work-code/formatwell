@@ -19,6 +19,8 @@ export interface ParseStats {
   bytes: number;
   lines: number;
   parseMs: number;
+  /** Number of records — used by JSONL. */
+  records?: number;
 }
 
 export interface ParseResult {

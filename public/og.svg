@@ -6,7 +6,7 @@
     <text x="66" y="34" fill="#E8EAF2" font-size="40" font-weight="700">FormatWell</text>
   </g>
   <text x="72" y="330" fill="#E8EAF2" font-size="60" font-weight="700">Validate, format &amp; preview</text>
-  <text x="72" y="404" fill="#E8EAF2" font-size="60" font-weight="700">JSON, XML &amp; Markdown</text>
+  <text x="72" y="404" fill="#E8EAF2" font-size="56" font-weight="700">JSON, JSONL, XML &amp; Markdown</text>
   <text x="72" y="470" fill="#9AA1B5" font-size="30">Everything runs in your browser. Your data never leaves your device.</text>
   <g transform="translate(72,520)" fill="#7C93FF" font-size="26">
     <g>
@@ -14,10 +14,14 @@
       <text x="75" y="37" text-anchor="middle">JSON</text>
     </g>
     <g transform="translate(166,0)">
+      <rect x="0" y="0" width="160" height="56" rx="8" fill="none" stroke="#2A2E3D" stroke-width="2"/>
+      <text x="80" y="37" text-anchor="middle">JSONL</text>
+    </g>
+    <g transform="translate(342,0)">
       <rect x="0" y="0" width="130" height="56" rx="8" fill="none" stroke="#2A2E3D" stroke-width="2"/>
       <text x="65" y="37" text-anchor="middle">XML</text>
     </g>
-    <g transform="translate(312,0)">
+    <g transform="translate(488,0)">
       <rect x="0" y="0" width="210" height="56" rx="8" fill="none" stroke="#2A2E3D" stroke-width="2"/>
       <text x="105" y="37" text-anchor="middle">Markdown</text>
     </g>

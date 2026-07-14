@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { XmlTool } from '@/components/xml/XmlTool';
 import { ToolHelp } from '@/components/ToolHelp';
+import { ToolHeader } from '@/components/ToolHeader';
 import { TOOLS } from '@/lib/site';
 
 const tool = TOOLS.find((t) => t.id === 'xml')!;
@@ -14,13 +15,10 @@ export const metadata: Metadata = {
 export default function XmlPage() {
   return (
     <div className="flex flex-col">
-      <header className="mb-5 flex flex-col gap-1">
-        <p className="font-mono text-label uppercase tracking-wide text-muted">Tool</p>
-        <h1 className="font-mono text-title font-600 text-ink">
-          XML well-formedness validator &amp; formatter
-        </h1>
-        <p className="max-w-2xl text-body text-muted">{tool.description}</p>
-      </header>
+      <ToolHeader
+        title="XML well-formedness validator & formatter"
+        description={tool.description}
+      />
 
       <XmlTool />
 

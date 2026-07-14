@@ -2,13 +2,14 @@
 
 export const SITE = {
   name: 'FormatWell',
-  tagline: 'Validate, format, and preview JSON, XML, and Markdown — entirely in your browser.',
+  tagline:
+    'Validate, format, and preview JSON, JSONL, XML, and Markdown — entirely in your browser.',
   privacyPromise: 'Everything runs in your browser. Your data never leaves your device.',
   // Used for absolute URLs in metadata / sitemap. Override at deploy time if needed.
   url: 'https://validateformat.com',
 } as const;
 
-export type ToolId = 'json' | 'xml' | 'markdown';
+export type ToolId = 'json' | 'jsonl' | 'xml' | 'markdown';
 
 export interface ToolMeta {
   id: ToolId;
@@ -26,6 +27,14 @@ export const TOOLS: ToolMeta[] = [
     title: 'JSON viewer, formatter & validator',
     description:
       'Validate, format, minify, and explore JSON with exact error line and column numbers.',
+  },
+  {
+    id: 'jsonl',
+    href: '/jsonl',
+    label: 'JSONL',
+    title: 'JSONL / NDJSON viewer, validator & converter',
+    description:
+      'Validate JSON Lines (NDJSON) with per-line errors, minify, browse records, and convert to or from a JSON array.',
   },
   {
     id: 'xml',

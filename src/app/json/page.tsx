@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { JsonTool } from '@/components/json/JsonTool';
 import { ToolHelp } from '@/components/ToolHelp';
+import { ToolHeader } from '@/components/ToolHeader';
 import { TOOLS } from '@/lib/site';
 
 const tool = TOOLS.find((t) => t.id === 'json')!;
@@ -14,13 +15,7 @@ export const metadata: Metadata = {
 export default function JsonPage() {
   return (
     <div className="flex flex-col">
-      <header className="mb-5 flex flex-col gap-1">
-        <p className="font-mono text-label uppercase tracking-wide text-muted">Tool</p>
-        <h1 className="font-mono text-title font-600 text-ink">
-          JSON viewer, formatter &amp; validator
-        </h1>
-        <p className="max-w-2xl text-body text-muted">{tool.description}</p>
-      </header>
+      <ToolHeader title="JSON viewer, formatter & validator" description={tool.description} />
 
       <JsonTool />
 
@@ -37,12 +32,28 @@ export default function JsonPage() {
             a: 'No. All parsing, formatting, and validation happen entirely in your browser using JavaScript. Your data never leaves your device, and there is no logging of content.',
           },
           {
+            q: 'Is it safe to validate sensitive or confidential JSON?',
+            a: 'Yes. Because everything runs locally in your browser and nothing is transmitted, it is safe for confidential payloads such as API keys, access tokens, configuration files, and personal data. No request carrying your content is ever made, and closing the tab discards it entirely.',
+          },
+          {
+            q: 'Can validating untrusted JSON be a security risk?',
+            a: 'No. Validation uses the browser’s native JSON.parse, which only reads data — it never executes code, unlike eval(). A malicious string in JSON cannot run scripts or commands here; at worst it is reported as invalid. Rendered output is plain text, so there is no cross-site scripting risk from JSON content.',
+          },
+          {
             q: 'Why does my JSON with trailing commas fail?',
             a: 'The JSON standard (RFC 8259) does not allow a comma after the last element in an object or array. Remove the trailing comma — the validator points you to its exact line and column.',
           },
           {
-            q: 'Can it handle large files?',
-            a: 'Yes. Files up to about 10 MB are supported. Inputs above ~100 KB are parsed in a Web Worker so the UI stays responsive, and you will see a "validating" indicator while it runs.',
+            q: 'Does it support comments or trailing commas (JSON5 / JSONC)?',
+            a: 'No. This validator follows strict RFC 8259 JSON, which does not permit comments or trailing commas. Formats like JSON5 and JSONC (used in some config files) allow them, but they are not valid standard JSON — remove comments and trailing commas to pass validation.',
+          },
+          {
+            q: 'How do I fix "Unexpected token" or "Expected property name" errors?',
+            a: 'These mean the parser found a character it did not expect at that point — often a missing comma or colon, an unquoted key, single quotes instead of double quotes, or a trailing comma. The error tells you the exact line and column; click it to jump to that spot in the editor.',
+          },
+          {
+            q: 'What is the maximum JSON size I can validate?',
+            a: 'Files up to about 10 MB are supported. Inputs above ~100 KB are parsed in a background Web Worker so the interface stays responsive, and a "validating" indicator shows while it runs.',
           },
         ]}
       />
