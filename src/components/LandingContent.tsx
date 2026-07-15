@@ -111,6 +111,20 @@ const SNIPPETS: Record<ToolId, ReactNode> = {
       </div>
     </>
   ),
+  'agent-trace': (
+    <>
+      <div>
+        {a('▶ user')} {s('"fix the auth test"')}
+      </div>
+      <div>
+        {p('  ⚙ ')}
+        {k('Bash')} {p('npm test')} {n('→ ok')}
+      </div>
+      <div>
+        {a('◀ assistant')} {k('212 tests pass')}
+      </div>
+    </>
+  ),
 };
 
 function StructuredData() {
@@ -152,7 +166,7 @@ export function LandingContent() {
         <p className="max-w-2xl text-body text-muted">{SITE.privacyPromise}</p>
       </section>
 
-      <section aria-label="Tools" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <section aria-label="Tools" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {TOOLS.map((tool) => (
           <Link
             key={tool.id}

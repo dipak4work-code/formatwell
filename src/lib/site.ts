@@ -9,7 +9,7 @@ export const SITE = {
   url: 'https://validateformat.com',
 } as const;
 
-export type ToolId = 'json' | 'jsonl' | 'xml' | 'markdown';
+export type ToolId = 'json' | 'jsonl' | 'xml' | 'markdown' | 'agent-trace';
 
 export interface ToolMeta {
   id: ToolId;
@@ -51,6 +51,14 @@ export const TOOLS: ToolMeta[] = [
     title: 'Markdown editor, preview & linter',
     description:
       'Write Markdown with a live, sanitized preview and lint hints. GitHub-flavored, XSS-safe.',
+  },
+  {
+    id: 'agent-trace',
+    href: '/agent-trace',
+    label: 'Agent Trace',
+    title: 'Claude Code session trace viewer',
+    description:
+      'Upload a Claude Code session transcript (.jsonl) and explore its timeline: turns, tool calls, subagents, and token usage.',
   },
 ];
 
