@@ -39,3 +39,9 @@ next-env.d.ts
 
 # stray scratch files
 new *.txt
+
+# claude code local settings
+.claude/
+
+# markdown docs (kept local, out of repo)
+*.md
