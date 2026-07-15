@@ -6,6 +6,9 @@ import { ErrorPanel } from '@/components/panels/ErrorPanel';
 import { ToolButton } from '@/components/ui/ToolButton';
 import { useToast } from '@/components/ui/ToastProvider';
 import { TraceTimeline } from './TraceTimeline';
+import { TraceGraphView } from './graph/TraceGraph';
+import { NodeDetail } from './graph/NodeDetail';
+import type { GraphNode } from './graph/layout';
 import { TraceProcessor } from '@/lib/workers/traceClient';
 import type { TraceSession } from '@/lib/parsers/agentTrace';
 import { verdictFor, type ParseResult, type Verdict } from '@/lib/parsers/types';
@@ -51,10 +54,13 @@ export function TraceTool() {
   const [verdict, setVerdict] = useState<Verdict>('idle');
   const [showMeta, setShowMeta] = useState(false);
   const [sourceName, setSourceName] = useState<string>('');
+  const [view, setView] = useState<'graph' | 'timeline'>('graph');
+  const [selected, setSelected] = useState<GraphNode | null>(null);
 
   async function load(text: string, name: string) {
     const req = ++reqRef.current;
     setSourceName(name);
+    setSelected(null);
     setVerdict('working');
     const out = await processorRef.current!.process(text);
     if (req !== reqRef.current) return;
@@ -96,6 +102,7 @@ export function TraceTool() {
     setTrace(null);
     setVerdict('idle');
     setSourceName('');
+    setSelected(null);
   }
 
   const meta = trace?.meta;
@@ -169,20 +176,65 @@ export function TraceTool() {
             </p>
           )}
 
-          <div className="min-h-0 flex-1 overflow-auto rounded-md border border-border bg-surface p-4">
-            {trace ? (
-              <TraceTimeline turns={trace.turns} showMeta={showMeta} />
-            ) : (
-              <div className="flex h-full min-h-[280px] flex-col items-center justify-center gap-2 text-center">
-                <p className="font-mono text-label text-muted">
-                  Upload a Claude Code session transcript (.jsonl) to see its timeline.
-                </p>
-                <p className="max-w-md font-mono text-[11px] leading-relaxed text-muted">
-                  Transcripts live in ~/.claude/projects/&lt;project&gt;/&lt;session-id&gt;.jsonl —
-                  or press Sample to explore a demo session.
-                </p>
-              </div>
-            )}
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-md border border-border bg-surface">
+            <div
+              role="tablist"
+              aria-label="Trace view"
+              className="flex items-center gap-1 border-b border-border px-2 py-1"
+            >
+              {(['graph', 'timeline'] as const).map((v) => (
+                <button
+                  key={v}
+                  role="tab"
+                  aria-selected={view === v}
+                  onClick={() => setView(v)}
+                  className={
+                    'rounded px-2.5 py-1 font-mono text-label capitalize transition-colors duration-fade ' +
+                    (view === v ? 'bg-accent/10 text-accent' : 'text-muted hover:text-ink')
+                  }
+                >
+                  {v}
+                </button>
+              ))}
+            </div>
+
+            <div className="min-h-0 flex-1">
+              {trace ? (
+                view === 'graph' ? (
+                  <div className="flex h-full min-h-[420px] flex-col gap-2 p-2 md:flex-row">
+                    <div className="min-h-0 min-w-0 flex-1">
+                      <TraceGraphView
+                        session={trace}
+                        showMeta={showMeta}
+                        selectedId={selected?.id ?? null}
+                        onSelect={setSelected}
+                      />
+                    </div>
+                    {selected && (
+                      <NodeDetail
+                        node={selected}
+                        session={trace}
+                        onClose={() => setSelected(null)}
+                      />
+                    )}
+                  </div>
+                ) : (
+                  <div className="h-full overflow-auto p-4">
+                    <TraceTimeline turns={trace.turns} showMeta={showMeta} />
+                  </div>
+                )
+              ) : (
+                <div className="flex h-full min-h-[280px] flex-col items-center justify-center gap-2 p-4 text-center">
+                  <p className="font-mono text-label text-muted">
+                    Upload a Claude Code session transcript (.jsonl) to see its graph.
+                  </p>
+                  <p className="max-w-md font-mono text-[11px] leading-relaxed text-muted">
+                    Transcripts live in ~/.claude/projects/&lt;project&gt;/&lt;session-id&gt;.jsonl
+                    — or press Sample to explore a demo session.
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="rounded-md border border-border bg-surface">
