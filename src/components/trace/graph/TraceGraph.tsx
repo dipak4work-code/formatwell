@@ -1,8 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { TraceSession } from '@/lib/parsers/agentTrace';
-import { edgePath, layoutTrace, type GraphNode } from './layout';
+import { edgePath, type GraphNode, type TraceGraph as Graph } from './layout';
 import { downloadGraphPng } from './exportImage';
 import { useToast } from '@/components/ui/ToastProvider';
 
@@ -24,8 +23,7 @@ function nodeStroke(node: GraphNode, selected: boolean): string {
 }
 
 interface TraceGraphViewProps {
-  session: TraceSession;
-  showMeta: boolean;
+  graph: Graph;
   selectedId: string | null;
   onSelect: (node: GraphNode | null) => void;
   /** Changes when a NEW source loads — triggers fit-to-view. Live re-parses keep it stable. */
@@ -34,25 +32,39 @@ interface TraceGraphViewProps {
   followTail?: boolean;
   /** Base filename (without extension) for image export. */
   exportName?: string;
+  /** Playback: render only the first N nodes (undefined = all). */
+  revealCount?: number;
 }
 
 export function TraceGraphView({
-  session,
-  showMeta,
+  graph,
   selectedId,
   onSelect,
   fitKey = 0,
   followTail = false,
   exportName = 'agent-trace',
+  revealCount,
 }: TraceGraphViewProps) {
   const { toast } = useToast();
   const hostRef = useRef<HTMLDivElement | null>(null);
   const [viewport, setViewport] = useState<Viewport>({ x: 0, y: 0, scale: 1 });
   const dragRef = useRef<{ startX: number; startY: number; vx: number; vy: number } | null>(null);
 
-  const graph = useMemo(() => layoutTrace(session, showMeta), [session, showMeta]);
   const graphRef = useRef(graph);
   graphRef.current = graph;
+
+  const playback = revealCount !== undefined;
+  const visibleNodes = useMemo(
+    () => (playback ? graph.nodes.slice(0, revealCount) : graph.nodes),
+    [graph, playback, revealCount],
+  );
+  const visibleEdges = useMemo(() => {
+    if (!playback) return graph.edges;
+    const ids = new Set(visibleNodes.map((n) => n.id));
+    return graph.edges.filter((e) => ids.has(e.from) && ids.has(e.to));
+  }, [graph, playback, visibleNodes]);
+  /** The most recently revealed node — highlighted and kept in view during playback. */
+  const stepNode = playback && visibleNodes.length > 0 ? visibleNodes[visibleNodes.length - 1] : null;
 
   const fit = useCallback(() => {
     const host = hostRef.current;
@@ -74,14 +86,36 @@ export function TraceGraphView({
 
   // Live follow: as the graph grows, keep its tail visible (preserving x/scale).
   useEffect(() => {
-    if (!followTail) return;
+    if (!followTail || playback) return;
     const host = hostRef.current;
     if (!host) return;
     setViewport((v) => {
       const targetY = host.clientHeight - graph.height * v.scale - 16;
       return targetY < v.y ? { ...v, y: targetY } : v;
     });
-  }, [graph.height, followTail]);
+  }, [graph.height, followTail, playback]);
+
+  // Playback follow: keep the newest revealed node comfortably in view (preserve scale).
+  const stepId = stepNode?.id;
+  useEffect(() => {
+    if (!stepId) return;
+    const host = hostRef.current;
+    const node = graphRef.current.nodes.find((n) => n.id === stepId);
+    if (!host || !node) return;
+    setViewport((v) => {
+      const pad = 60;
+      const nx = node.x * v.scale + v.x;
+      const ny = node.y * v.scale + v.y;
+      const nx2 = (node.x + node.w) * v.scale + v.x;
+      const ny2 = (node.y + node.h) * v.scale + v.y;
+      let { x, y } = v;
+      if (ny2 > host.clientHeight - pad) y -= ny2 - (host.clientHeight - pad);
+      if (ny < pad) y += pad - ny;
+      if (nx2 > host.clientWidth - pad) x -= nx2 - (host.clientWidth - pad);
+      if (nx < pad) x += pad - nx;
+      return x === v.x && y === v.y ? v : { ...v, x, y };
+    });
+  }, [stepId]);
 
   function zoomAt(clientX: number, clientY: number, factor: number) {
     const host = hostRef.current;
@@ -146,7 +180,7 @@ export function TraceGraphView({
         aria-label="Session graph"
       >
         <g transform={`translate(${viewport.x} ${viewport.y}) scale(${viewport.scale})`}>
-          {graph.edges.map((e) => (
+          {visibleEdges.map((e) => (
             <path
               key={e.id}
               d={edgePath(graph, e.from, e.to, e.kind)}
@@ -157,8 +191,9 @@ export function TraceGraphView({
             />
           ))}
 
-          {graph.nodes.map((n) => {
+          {visibleNodes.map((n) => {
             const selected = n.id === selectedId;
+            const isStep = n.id === stepNode?.id;
             const isTool = n.kind === 'tool';
             return (
               <g
@@ -174,6 +209,20 @@ export function TraceGraphView({
                   if (e.key === 'Enter' || e.key === ' ') onSelect(n);
                 }}
               >
+                {isStep && (
+                  <rect
+                    x={-4}
+                    y={-4}
+                    width={n.w + 8}
+                    height={n.h + 8}
+                    rx={isTool ? 9 : 11}
+                    fill="none"
+                    stroke="var(--accent)"
+                    strokeWidth={2}
+                    opacity={0.55}
+                    className="animate-pulse"
+                  />
+                )}
                 <rect
                   width={n.w}
                   height={n.h}

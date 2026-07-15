@@ -66,6 +66,20 @@ describe('layoutTrace', () => {
     expect(resume).toBeDefined();
   });
 
+  it('orders nodes as turn followed by its tool calls (playback reveal order)', () => {
+    const g = layoutTrace(sampleSession());
+    let lastTurnIndex = -1;
+    for (const n of g.nodes) {
+      if (n.kind !== 'tool') {
+        expect(n.turnIndex!).toBeGreaterThan(lastTurnIndex);
+        lastTurnIndex = n.turnIndex!;
+      } else {
+        // Tool nodes always belong to the most recently emitted turn.
+        expect(n.turnIndex).toBe(lastTurnIndex);
+      }
+    }
+  });
+
   it('honors showMeta=false by omitting meta user turns', () => {
     const withMetaLine = [
       AGENT_TRACE_SAMPLE,

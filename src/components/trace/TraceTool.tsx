@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { StatusSpine } from '@/components/panels/StatusSpine';
 import { ErrorPanel } from '@/components/panels/ErrorPanel';
 import { ToolButton } from '@/components/ui/ToolButton';
@@ -8,7 +8,7 @@ import { useToast } from '@/components/ui/ToastProvider';
 import { TraceTimeline } from './TraceTimeline';
 import { TraceGraphView } from './graph/TraceGraph';
 import { NodeDetail } from './graph/NodeDetail';
-import type { GraphNode } from './graph/layout';
+import { layoutTrace, type GraphNode } from './graph/layout';
 import { TraceProcessor } from '@/lib/workers/traceClient';
 import type { TraceSession } from '@/lib/parsers/agentTrace';
 import { verdictFor, type ParseResult, type Verdict } from '@/lib/parsers/types';
@@ -72,6 +72,44 @@ export function TraceTool() {
 
   const canWatch = typeof window !== 'undefined' && 'showOpenFilePicker' in window;
 
+  // Step-by-step playback (graph view). playhead = revealed node count; null = full view.
+  const [playhead, setPlayhead] = useState<number | null>(null);
+  const [playing, setPlaying] = useState(false);
+  const [speed, setSpeed] = useState(1);
+
+  const graph = useMemo(() => (trace ? layoutTrace(trace, showMeta) : null), [trace, showMeta]);
+  const totalSteps = graph?.nodes.length ?? 0;
+
+  // Autoplay ticker.
+  useEffect(() => {
+    if (!playing || !graph) return;
+    const timer = window.setInterval(() => {
+      setPlayhead((p) => {
+        const next = (p ?? 0) + 1;
+        if (next >= graph.nodes.length) {
+          setPlaying(false);
+          return graph.nodes.length;
+        }
+        return next;
+      });
+    }, 700 / speed);
+    return () => window.clearInterval(timer);
+  }, [playing, speed, graph]);
+
+  function stepTo(next: number) {
+    if (!graph) return;
+    const clamped = Math.min(Math.max(next, 0), graph.nodes.length);
+    setPlayhead(clamped);
+    // Manual stepping narrates: select the newly revealed node so the detail panel follows.
+    const node = clamped > 0 ? graph.nodes[clamped - 1] : null;
+    setSelected(node ?? null);
+  }
+
+  function exitPlayback() {
+    setPlaying(false);
+    setPlayhead(null);
+  }
+
   // Stop polling on unmount.
   useEffect(() => {
     return () => {
@@ -85,6 +123,8 @@ export function TraceTool() {
     if (!opts.live) {
       stopWatch(false);
       setSelected(null);
+      setPlaying(false);
+      setPlayhead(null);
     }
     setVerdict('working');
     const out = await processorRef.current!.process(text);
@@ -200,6 +240,8 @@ export function TraceTool() {
     setVerdict('idle');
     setSourceName('');
     setSelected(null);
+    setPlaying(false);
+    setPlayhead(null);
   }
 
   const meta = trace?.meta;
@@ -325,29 +367,108 @@ export function TraceTool() {
             </div>
 
             <div className="min-h-0 flex-1">
-              {trace ? (
+              {trace && graph ? (
                 view === 'graph' ? (
-                  <div className="flex h-full min-h-[420px] flex-col gap-2 p-2 md:flex-row">
-                    <div className="min-h-0 min-w-0 flex-1">
-                      <TraceGraphView
-                        session={trace}
-                        showMeta={showMeta}
-                        selectedId={selected?.id ?? null}
-                        onSelect={setSelected}
-                        fitKey={fitKey}
-                        followTail={watching !== null && follow}
-                        exportName={
-                          sourceName ? sourceName.replace(/\.(jsonl|ndjson|txt)$/i, '') : 'agent-trace'
-                        }
+                  <div className="flex h-full min-h-[420px] flex-col gap-2 p-2">
+                    <div
+                      aria-label="Playback controls"
+                      className="flex flex-wrap items-center gap-1.5 rounded-md border border-border bg-bg px-2 py-1.5"
+                    >
+                      <ToolButton
+                        onClick={() => {
+                          if (playing) {
+                            setPlaying(false);
+                          } else {
+                            if (playhead === null || playhead >= totalSteps) stepTo(0);
+                            setSelected(null);
+                            setPlaying(true);
+                          }
+                        }}
+                        primary
+                        title="Replay the session step by step"
+                      >
+                        {playing ? '⏸ Pause' : '▶ Play'}
+                      </ToolButton>
+                      <ToolButton
+                        onClick={() => {
+                          setPlaying(false);
+                          stepTo((playhead ?? 0) - 1);
+                        }}
+                        disabled={playhead === null || playhead <= 0}
+                        title="Step back"
+                      >
+                        ⏮
+                      </ToolButton>
+                      <ToolButton
+                        onClick={() => {
+                          setPlaying(false);
+                          stepTo((playhead ?? 0) + 1);
+                        }}
+                        disabled={playhead !== null && playhead >= totalSteps}
+                        title="Step forward"
+                      >
+                        ⏭
+                      </ToolButton>
+
+                      <input
+                        type="range"
+                        min={0}
+                        max={totalSteps}
+                        value={playhead ?? totalSteps}
+                        onChange={(e) => {
+                          setPlaying(false);
+                          stepTo(Number(e.target.value));
+                        }}
+                        aria-label="Playback position"
+                        className="min-w-24 flex-1 accent-[var(--accent)]"
                       />
+                      <span className="font-mono text-label tabular-nums text-muted">
+                        {playhead ?? totalSteps}/{totalSteps}
+                      </span>
+
+                      <select
+                        value={String(speed)}
+                        onChange={(e) => setSpeed(Number(e.target.value))}
+                        aria-label="Playback speed"
+                        className="rounded border border-border bg-surface px-1.5 py-1 font-mono text-label text-ink"
+                      >
+                        <option value="0.5">0.5×</option>
+                        <option value="1">1×</option>
+                        <option value="2">2×</option>
+                        <option value="4">4×</option>
+                      </select>
+
+                      {playhead !== null && (
+                        <ToolButton onClick={exitPlayback} title="Show the full graph">
+                          Exit
+                        </ToolButton>
+                      )}
                     </div>
-                    {selected && (
-                      <NodeDetail
-                        node={selected}
-                        session={trace}
-                        onClose={() => setSelected(null)}
-                      />
-                    )}
+
+                    <div className="flex min-h-0 flex-1 flex-col gap-2 md:flex-row">
+                      <div className="min-h-0 min-w-0 flex-1">
+                        <TraceGraphView
+                          graph={graph}
+                          selectedId={selected?.id ?? null}
+                          onSelect={setSelected}
+                          fitKey={fitKey}
+                          followTail={watching !== null && follow}
+                          exportName={
+                            sourceName
+                              ? sourceName.replace(/\.(jsonl|ndjson|txt)$/i, '')
+                              : 'agent-trace'
+                          }
+                          revealCount={playhead ?? undefined}
+                        />
+                      </div>
+                      {selected && (
+                        <NodeDetail
+                          node={selected}
+                          session={trace}
+                          onClose={() => setSelected(null)}
+                        />
+                      )}
+                    </div>
                   </div>
                 ) : (
                   <div className="h-full overflow-auto p-4">
