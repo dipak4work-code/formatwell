@@ -81,6 +81,26 @@ function turnSnippet(turn: TraceTurn): string {
   return '';
 }
 
+/** Bezier path for an edge — shared by the interactive canvas and the PNG/SVG exporter. */
+export function edgePath(g: TraceGraph, from: string, to: string, kind: GraphEdge['kind']): string {
+  const a = g.nodes.find((n) => n.id === from)!;
+  const b = g.nodes.find((n) => n.id === to)!;
+  if (kind === 'tool') {
+    const x1 = a.x + a.w;
+    const y1 = a.y + Math.min(a.h, 40) / 2 + 6;
+    const x2 = b.x;
+    const y2 = b.y + b.h / 2;
+    const mx = (x1 + x2) / 2;
+    return `M ${x1} ${y1} C ${mx} ${y1}, ${mx} ${y2}, ${x2} ${y2}`;
+  }
+  const x1 = a.x + a.w / 2;
+  const y1 = a.y + a.h;
+  const x2 = b.x + b.w / 2;
+  const y2 = b.y;
+  const my = (y1 + y2) / 2;
+  return `M ${x1} ${y1} C ${x1} ${my}, ${x2} ${my}, ${x2} ${y2}`;
+}
+
 export function layoutTrace(session: TraceSession, showMeta = false): TraceGraph {
   const nodes: GraphNode[] = [];
   const edges: GraphEdge[] = [];

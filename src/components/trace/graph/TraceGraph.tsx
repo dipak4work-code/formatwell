@@ -2,7 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { TraceSession } from '@/lib/parsers/agentTrace';
-import { layoutTrace, type GraphNode, type TraceGraph as Graph } from './layout';
+import { edgePath, layoutTrace, type GraphNode } from './layout';
+import { downloadGraphPng } from './exportImage';
+import { useToast } from '@/components/ui/ToastProvider';
 
 interface Viewport {
   x: number;
@@ -21,57 +23,65 @@ function nodeStroke(node: GraphNode, selected: boolean): string {
   return 'var(--border)';
 }
 
-function edgePath(g: Graph, from: string, to: string, kind: string): string {
-  const a = g.nodes.find((n) => n.id === from)!;
-  const b = g.nodes.find((n) => n.id === to)!;
-  if (kind === 'tool') {
-    // Horizontal curve: right edge of turn → left edge of tool node.
-    const x1 = a.x + a.w;
-    const y1 = a.y + Math.min(a.h, 40) / 2 + 6;
-    const x2 = b.x;
-    const y2 = b.y + b.h / 2;
-    const mx = (x1 + x2) / 2;
-    return `M ${x1} ${y1} C ${mx} ${y1}, ${mx} ${y2}, ${x2} ${y2}`;
-  }
-  // Vertical curve: bottom of a → top of b.
-  const x1 = a.x + a.w / 2;
-  const y1 = a.y + a.h;
-  const x2 = b.x + b.w / 2;
-  const y2 = b.y;
-  const my = (y1 + y2) / 2;
-  return `M ${x1} ${y1} C ${x1} ${my}, ${x2} ${my}, ${x2} ${y2}`;
-}
-
 interface TraceGraphViewProps {
   session: TraceSession;
   showMeta: boolean;
   selectedId: string | null;
   onSelect: (node: GraphNode | null) => void;
+  /** Changes when a NEW source loads — triggers fit-to-view. Live re-parses keep it stable. */
+  fitKey?: number;
+  /** Live mode: keep the newest node in view as the graph grows. */
+  followTail?: boolean;
+  /** Base filename (without extension) for image export. */
+  exportName?: string;
 }
 
-export function TraceGraphView({ session, showMeta, selectedId, onSelect }: TraceGraphViewProps) {
+export function TraceGraphView({
+  session,
+  showMeta,
+  selectedId,
+  onSelect,
+  fitKey = 0,
+  followTail = false,
+  exportName = 'agent-trace',
+}: TraceGraphViewProps) {
+  const { toast } = useToast();
   const hostRef = useRef<HTMLDivElement | null>(null);
   const [viewport, setViewport] = useState<Viewport>({ x: 0, y: 0, scale: 1 });
   const dragRef = useRef<{ startX: number; startY: number; vx: number; vy: number } | null>(null);
 
   const graph = useMemo(() => layoutTrace(session, showMeta), [session, showMeta]);
+  const graphRef = useRef(graph);
+  graphRef.current = graph;
 
   const fit = useCallback(() => {
     const host = hostRef.current;
     if (!host) return;
+    const g = graphRef.current;
     const { clientWidth, clientHeight } = host;
     if (clientWidth === 0) return;
     const scale = Math.min(
-      Math.max(Math.min(clientWidth / graph.width, clientHeight / graph.height), MIN_SCALE),
+      Math.max(Math.min(clientWidth / g.width, clientHeight / g.height), MIN_SCALE),
       1,
     );
-    setViewport({ x: (clientWidth - graph.width * scale) / 2, y: 8, scale });
-  }, [graph.width, graph.height]);
+    setViewport({ x: (clientWidth - g.width * scale) / 2, y: 8, scale });
+  }, []);
 
-  // Fit whenever a new session/graph arrives.
+  // Fit only when a new source loads — not on every live growth of the same session.
   useEffect(() => {
     fit();
-  }, [fit]);
+  }, [fitKey, fit]);
+
+  // Live follow: as the graph grows, keep its tail visible (preserving x/scale).
+  useEffect(() => {
+    if (!followTail) return;
+    const host = hostRef.current;
+    if (!host) return;
+    setViewport((v) => {
+      const targetY = host.clientHeight - graph.height * v.scale - 16;
+      return targetY < v.y ? { ...v, y: targetY } : v;
+    });
+  }, [graph.height, followTail]);
 
   function zoomAt(clientX: number, clientY: number, factor: number) {
     const host = hostRef.current;
@@ -224,6 +234,17 @@ export function TraceGraphView({ session, showMeta, selectedId, onSelect }: Trac
 
       <div className="absolute bottom-3 right-3 flex gap-1">
         {[
+          {
+            label: 'PNG ↓',
+            act: () => {
+              const host = hostRef.current;
+              if (!host) return;
+              downloadGraphPng(graphRef.current, host, `${exportName}.png`)
+                .then(() => toast('Graph image downloaded', 'valid'))
+                .catch(() => toast('Image export failed', 'invalid'));
+            },
+            aria: 'Download graph as PNG image',
+          },
           { label: '−', act: () => zoomCenter(1 / 1.3), aria: 'Zoom out' },
           { label: '+', act: () => zoomCenter(1.3), aria: 'Zoom in' },
           { label: 'Fit', act: fit, aria: 'Fit graph to view' },

@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { StatusSpine } from '@/components/panels/StatusSpine';
 import { ErrorPanel } from '@/components/panels/ErrorPanel';
 import { ToolButton } from '@/components/ui/ToolButton';
@@ -56,17 +56,45 @@ export function TraceTool() {
   const [sourceName, setSourceName] = useState<string>('');
   const [view, setView] = useState<'graph' | 'timeline'>('graph');
   const [selected, setSelected] = useState<GraphNode | null>(null);
+  const [fitKey, setFitKey] = useState(0);
 
-  async function load(text: string, name: string) {
+  // Live watch (File System Access API, Chromium only).
+  const [watching, setWatching] = useState<string | null>(null);
+  const [follow, setFollow] = useState(true);
+  const [lastUpdate, setLastUpdate] = useState<string>('');
+  const watchRef = useRef<{
+    handle: FileSystemFileHandle;
+    timer: number;
+    lastModified: number;
+    lastSize: number;
+    busy: boolean;
+  } | null>(null);
+
+  const canWatch = typeof window !== 'undefined' && 'showOpenFilePicker' in window;
+
+  // Stop polling on unmount.
+  useEffect(() => {
+    return () => {
+      if (watchRef.current) window.clearInterval(watchRef.current.timer);
+    };
+  }, []);
+
+  async function load(text: string, name: string, opts: { live?: boolean } = {}) {
     const req = ++reqRef.current;
     setSourceName(name);
-    setSelected(null);
+    if (!opts.live) {
+      stopWatch(false);
+      setSelected(null);
+    }
     setVerdict('working');
     const out = await processorRef.current!.process(text);
     if (req !== reqRef.current) return;
     setResult(out.result);
     setTrace(out.trace);
     setVerdict(verdictFor(out.result));
+    setLastUpdate(new Date().toLocaleTimeString([], { hour12: false }));
+    if (!opts.live) setFitKey((k) => k + 1);
+    if (opts.live) return; // quiet updates while watching
     if (out.result.ok && out.trace) {
       toast(
         `Parsed ${out.trace.meta.userTurns + out.trace.meta.assistantTurns} turns, ${out.trace.meta.toolCalls} tool calls`,
@@ -75,6 +103,74 @@ export function TraceTool() {
     } else if (out.result.errors.length > 0) {
       toast(out.result.errors[0]!.message, 'invalid');
     }
+  }
+
+  function stopWatch(announce = true) {
+    const w = watchRef.current;
+    if (!w) return;
+    window.clearInterval(w.timer);
+    watchRef.current = null;
+    setWatching(null);
+    if (announce) toast('Stopped watching', 'neutral');
+  }
+
+  async function startWatch() {
+    if (!canWatch || !window.showOpenFilePicker) {
+      toast('Live watch needs Chrome or Edge', 'warn');
+      return;
+    }
+    let handle: FileSystemFileHandle;
+    try {
+      const picked = await window.showOpenFilePicker({
+        multiple: false,
+        types: [
+          {
+            description: 'Session transcript',
+            accept: { 'text/plain': ['.jsonl', '.ndjson', '.txt'] },
+          },
+        ],
+      });
+      if (!picked[0]) return;
+      handle = picked[0];
+    } catch {
+      return; // user cancelled the picker
+    }
+
+    stopWatch(false);
+    const file = await handle.getFile();
+    const text = await file.text();
+    await load(text, file.name);
+
+    const timer = window.setInterval(async () => {
+      const w = watchRef.current;
+      if (!w || w.busy) return;
+      w.busy = true;
+      try {
+        const f = await w.handle.getFile();
+        if (f.lastModified !== w.lastModified || f.size !== w.lastSize) {
+          w.lastModified = f.lastModified;
+          w.lastSize = f.size;
+          await load(await f.text(), f.name, { live: true });
+        }
+      } catch {
+        // File became unreadable (deleted/moved) — stop cleanly.
+        stopWatch(false);
+        toast('Lost access to the watched file', 'warn');
+      } finally {
+        const w2 = watchRef.current;
+        if (w2) w2.busy = false;
+      }
+    }, 1500);
+
+    watchRef.current = {
+      handle,
+      timer,
+      lastModified: file.lastModified,
+      lastSize: file.size,
+      busy: false,
+    };
+    setWatching(handle.name);
+    toast(`Watching ${handle.name} — updates live`, 'valid');
   }
 
   async function handlePaste() {
@@ -98,6 +194,7 @@ export function TraceTool() {
 
   function handleClear() {
     reqRef.current++;
+    stopWatch(false);
     setResult(null);
     setTrace(null);
     setVerdict('idle');
@@ -121,6 +218,17 @@ export function TraceTool() {
         <ToolButton onClick={() => fileInputRef.current?.click()} primary>
           Upload transcript
         </ToolButton>
+        {canWatch && (
+          <ToolButton
+            onClick={() => {
+              if (watching) stopWatch();
+              else void startWatch();
+            }}
+            title="Watch a session file and update live as it grows (Chrome/Edge)"
+          >
+            {watching ? 'Stop watching' : 'Watch live'}
+          </ToolButton>
+        )}
         <ToolButton onClick={handlePaste}>Paste</ToolButton>
         <ToolButton
           onClick={() => {
@@ -143,9 +251,27 @@ export function TraceTool() {
           Show meta records
         </label>
 
-        {sourceName && (
-          <span className="ml-auto font-mono text-label text-muted">{sourceName}</span>
+        {watching && (
+          <label className="flex cursor-pointer items-center gap-1.5 font-mono text-label text-muted">
+            <input
+              type="checkbox"
+              checked={follow}
+              onChange={(e) => setFollow(e.target.checked)}
+              className="accent-[var(--accent)]"
+            />
+            Follow tail
+          </label>
         )}
+
+        <span className="ml-auto flex items-center gap-2 font-mono text-label text-muted">
+          {watching && (
+            <span className="flex items-center gap-1.5 text-valid">
+              <span aria-hidden="true" className="h-2 w-2 animate-pulse rounded-full bg-valid" />
+              live{lastUpdate ? ` · ${lastUpdate}` : ''}
+            </span>
+          )}
+          {sourceName && <span>{sourceName}</span>}
+        </span>
       </div>
 
       <div className="flex min-h-[440px] items-stretch gap-3">
@@ -208,6 +334,11 @@ export function TraceTool() {
                         showMeta={showMeta}
                         selectedId={selected?.id ?? null}
                         onSelect={setSelected}
+                        fitKey={fitKey}
+                        followTail={watching !== null && follow}
+                        exportName={
+                          sourceName ? sourceName.replace(/\.(jsonl|ndjson|txt)$/i, '') : 'agent-trace'
+                        }
                       />
                     </div>
                     {selected && (
