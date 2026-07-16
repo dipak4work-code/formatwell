@@ -1,0 +1,21 @@
+/**
+ * A small synthetic Codex CLI rollout for the "Codex sample" button. Mirrors the real
+ * wrapper shapes: session_meta, turn_context, response_item (message / reasoning /
+ * function_call / function_call_output), and a token_count event.
+ */
+export const CODEX_TRACE_SAMPLE = [
+  '{"timestamp":"2026-07-16T09:00:00.000Z","type":"session_meta","payload":{"id":"0d9f1c2a-demo","timestamp":"2026-07-16T09:00:00.000Z","cwd":"/home/dev/app","originator":"codex_cli_rs","cli_version":"0.48.0","instructions":null,"git":{"commit_hash":"a1b2c3d","branch":"main","repository_url":"https://github.com/dev/app"}}}',
+  '{"timestamp":"2026-07-16T09:00:00.100Z","type":"turn_context","payload":{"cwd":"/home/dev/app","approval_policy":"on-request","sandbox_policy":{"mode":"workspace-write"},"model":"gpt-5-codex","effort":"medium","summary":"auto"}}',
+  '{"timestamp":"2026-07-16T09:00:01.000Z","type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"The auth test fails on CI. Find and fix it."}]}}',
+  '{"timestamp":"2026-07-16T09:00:04.000Z","type":"response_item","payload":{"type":"reasoning","summary":[{"type":"summary_text","text":"Reproduce the failure before changing code."}],"content":[]}}',
+  '{"timestamp":"2026-07-16T09:00:05.000Z","type":"response_item","payload":{"type":"function_call","name":"shell","arguments":"{\\"command\\":[\\"bash\\",\\"-lc\\",\\"npm test -- auth.spec.ts\\"]}","call_id":"call_001"}}',
+  '{"timestamp":"2026-07-16T09:00:09.000Z","type":"response_item","payload":{"type":"function_call_output","call_id":"call_001","output":"{\\"output\\":\\"FAIL auth.spec.ts — expected 401, received 500\\\\nTypeError: Cannot read properties of undefined (reading \'token\')\\\\n  at validate (src/auth.ts:42)\\",\\"metadata\\":{\\"exit_code\\":1,\\"duration_seconds\\":3.4}}"}}',
+  '{"timestamp":"2026-07-16T09:00:12.000Z","type":"response_item","payload":{"type":"function_call","name":"shell","arguments":"{\\"command\\":[\\"bash\\",\\"-lc\\",\\"sed -n \'40,44p\' src/auth.ts\\"]}","call_id":"call_002"}}',
+  '{"timestamp":"2026-07-16T09:00:13.000Z","type":"response_item","payload":{"type":"function_call_output","call_id":"call_002","output":"{\\"output\\":\\"function validate(req) {\\\\n  const header = req.headers.authorization;\\\\n  return verify(header.token);\\\\n}\\",\\"metadata\\":{\\"exit_code\\":0,\\"duration_seconds\\":0.1}}"}}',
+  '{"timestamp":"2026-07-16T09:00:18.000Z","type":"response_item","payload":{"type":"function_call","name":"apply_patch","arguments":"{\\"input\\":\\"*** Begin Patch\\\\n*** Update File: src/auth.ts\\\\n@@\\\\n-  return verify(header.token);\\\\n+  if (!header) return null;\\\\n+  return verify(header.token);\\\\n*** End Patch\\"}","call_id":"call_003"}}',
+  '{"timestamp":"2026-07-16T09:00:19.000Z","type":"response_item","payload":{"type":"function_call_output","call_id":"call_003","output":"{\\"output\\":\\"Success. Updated the following files:\\\\nM src/auth.ts\\",\\"metadata\\":{\\"exit_code\\":0,\\"duration_seconds\\":0.2}}"}}',
+  '{"timestamp":"2026-07-16T09:00:22.000Z","type":"response_item","payload":{"type":"function_call","name":"shell","arguments":"{\\"command\\":[\\"bash\\",\\"-lc\\",\\"npm test\\"]}","call_id":"call_004"}}',
+  '{"timestamp":"2026-07-16T09:00:41.000Z","type":"response_item","payload":{"type":"function_call_output","call_id":"call_004","output":"{\\"output\\":\\"Test suites: 14 passed, 14 total\\\\nTests: 212 passed, 212 total\\",\\"metadata\\":{\\"exit_code\\":0,\\"duration_seconds\\":18.6}}"}}',
+  '{"timestamp":"2026-07-16T09:00:45.000Z","type":"response_item","payload":{"type":"message","role":"assistant","content":[{"type":"output_text","text":"Fixed. `validate` crashed when the Authorization header was missing; it now returns null so the middleware responds 401. Full suite passes (212/212)."}]}}',
+  '{"timestamp":"2026-07-16T09:00:45.200Z","type":"event_msg","payload":{"type":"token_count","info":{"total_token_usage":{"input_tokens":18240,"cached_input_tokens":15360,"output_tokens":1420,"total_tokens":19660},"last_token_usage":{"input_tokens":2210,"cached_input_tokens":1980,"output_tokens":310,"total_tokens":2520}}}}',
+].join('\n');

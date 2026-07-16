@@ -56,9 +56,12 @@ export interface TraceTurn {
   hasImages: boolean;
 }
 
+export type TraceFormat = 'claude-code' | 'codex' | 'generic';
+
 export interface TraceSession {
   turns: TraceTurn[];
   meta: {
+    format: TraceFormat;
     sessionId?: string;
     version?: string;
     gitBranch?: string;
@@ -172,6 +175,7 @@ export function parseAgentTrace(input: string): TraceParseOutput {
   const errors: ParseIssue[] = [];
   const turns: TraceTurn[] = [];
   const meta: TraceSession['meta'] = {
+    format: 'claude-code',
     models: [],
     userTurns: 0,
     assistantTurns: 0,

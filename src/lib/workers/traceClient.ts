@@ -24,8 +24,8 @@ export class TraceProcessor {
     if (this.usesWorker(input)) {
       return this.ensureClient().run({ input });
     }
-    const { parseAgentTrace } = await import('@/lib/parsers/agentTrace');
-    return parseAgentTrace(input);
+    const { parseTrace } = await import('@/lib/parsers/traceDispatch');
+    return parseTrace(input);
   }
 
   dispose(): void {

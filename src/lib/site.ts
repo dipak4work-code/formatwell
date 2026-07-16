@@ -56,9 +56,9 @@ export const TOOLS: ToolMeta[] = [
     id: 'agent-trace',
     href: '/agent-trace',
     label: 'Agent Trace',
-    title: 'Claude Code session trace viewer',
+    title: 'AI agent session trace viewer',
     description:
-      'Upload a Claude Code session transcript (.jsonl) and explore it as an interactive graph and timeline: turns, tool calls, subagents, and token usage.',
+      'Upload a Claude Code, Codex, or other agent transcript (.jsonl) and explore it as an interactive graph and timeline: turns, tool calls, subagents, and token usage.',
   },
 ];
 

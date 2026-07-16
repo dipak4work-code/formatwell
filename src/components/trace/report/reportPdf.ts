@@ -209,6 +209,7 @@ function composeReport(trace: TraceSession, sourceName: string): PageComposer {
   page.gap(6);
 
   const metaLines = [
+    `format: ${meta.format === 'claude-code' ? 'Claude Code' : meta.format === 'codex' ? 'Codex' : 'generic chat'}`,
     `turns: ${meta.userTurns} user · ${meta.assistantTurns} assistant`,
     `tool calls: ${meta.toolCalls} (${meta.toolErrors} error${meta.toolErrors === 1 ? '' : 's'})`,
     `tokens: ${fmtTokens(meta.usage.inputTokens)} in · ${fmtTokens(meta.usage.outputTokens)} out · ${fmtTokens(meta.usage.cacheReadTokens)} cache read`,

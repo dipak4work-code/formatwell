@@ -14,6 +14,7 @@ import type { TraceSession } from '@/lib/parsers/agentTrace';
 import { verdictFor, type ParseResult, type Verdict } from '@/lib/parsers/types';
 import { readClipboard, readTextFile } from '@/lib/utils/io';
 import { AGENT_TRACE_SAMPLE } from '@/lib/samples/agentTrace';
+import { CODEX_TRACE_SAMPLE } from '@/lib/samples/codexTrace';
 
 function fmtTokens(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
@@ -287,10 +288,17 @@ export function TraceTool() {
         <ToolButton onClick={handlePaste}>Paste</ToolButton>
         <ToolButton
           onClick={() => {
-            void load(AGENT_TRACE_SAMPLE, 'sample session');
+            void load(AGENT_TRACE_SAMPLE, 'claude sample');
           }}
         >
-          Sample
+          Claude sample
+        </ToolButton>
+        <ToolButton
+          onClick={() => {
+            void load(CODEX_TRACE_SAMPLE, 'codex sample');
+          }}
+        >
+          Codex sample
         </ToolButton>
         <ToolButton onClick={handleClear}>Clear</ToolButton>
         <ToolButton
@@ -356,6 +364,13 @@ export function TraceTool() {
 
           {meta && (
             <p className="flex flex-wrap gap-x-4 gap-y-1 font-mono text-[11px] text-muted">
+              <span className="text-accent">
+                {meta.format === 'claude-code'
+                  ? 'claude code'
+                  : meta.format === 'codex'
+                    ? 'codex'
+                    : 'generic chat'}
+              </span>
               {meta.models.length > 0 && <span>model: {meta.models.join(', ')}</span>}
               {meta.gitBranch && <span>branch: {meta.gitBranch}</span>}
               {meta.version && <span>claude code v{meta.version}</span>}
@@ -498,11 +513,12 @@ export function TraceTool() {
               ) : (
                 <div className="flex h-full min-h-[280px] flex-col items-center justify-center gap-2 p-4 text-center">
                   <p className="font-mono text-label text-muted">
-                    Upload a Claude Code session transcript (.jsonl) to see its graph.
+                    Upload an agent session transcript (.jsonl) to see its graph.
                   </p>
                   <p className="max-w-md font-mono text-[11px] leading-relaxed text-muted">
-                    Transcripts live in ~/.claude/projects/&lt;project&gt;/&lt;session-id&gt;.jsonl
-                    — or press Sample to explore a demo session.
+                    Claude Code: ~/.claude/projects/&lt;project&gt;/&lt;session-id&gt;.jsonl ·
+                    Codex: ~/.codex/sessions/&lt;date&gt;/rollout-*.jsonl · other agents&apos;
+                    role/content chat JSONL also works — or try a sample.
                   </p>
                 </div>
               )}
