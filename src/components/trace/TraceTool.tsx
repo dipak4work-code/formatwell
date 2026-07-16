@@ -110,6 +110,19 @@ export function TraceTool() {
     setPlayhead(null);
   }
 
+  async function handlePdf() {
+    if (!trace) return;
+    toast('Building PDF report…', 'neutral');
+    try {
+      // Lazy-load the composer/writer so it stays out of the page bundle.
+      const { downloadTraceReportPdf } = await import('./report/reportPdf');
+      await downloadTraceReportPdf(trace, sourceName || 'agent-trace');
+      toast('PDF report downloaded', 'valid');
+    } catch {
+      toast('PDF export failed', 'invalid');
+    }
+  }
+
   // Stop polling on unmount.
   useEffect(() => {
     return () => {
@@ -280,6 +293,13 @@ export function TraceTool() {
           Sample
         </ToolButton>
         <ToolButton onClick={handleClear}>Clear</ToolButton>
+        <ToolButton
+          onClick={handlePdf}
+          disabled={!trace}
+          title="Download the whole session as a step-by-step PDF report"
+        >
+          Report PDF
+        </ToolButton>
 
         <span aria-hidden="true" className="mx-1 h-5 w-px bg-border" />
 

@@ -37,7 +37,7 @@ export default function AgentTracePage() {
           },
           {
             q: 'What does the viewer show?',
-            a: 'An interactive graph (pan/zoom canvas of turns, tool calls, and subagent branches — click any node for its full input and result), a step-by-step replay with play/pause, scrubbing, and speed control, and a timeline view; plus per-session stats including tool-call counts, tool errors, token usage, cache reads, models used, and duration.',
+            a: 'An interactive graph (pan/zoom canvas of turns, tool calls, and subagent branches — click any node for its full input and result), a step-by-step replay with play/pause, scrubbing, and speed control, and a timeline view; plus per-session stats including tool-call counts, tool errors, token usage, cache reads, models used, and duration. You can export the graph as a PNG image or download the entire session as a step-by-step PDF report — both generated locally in your browser.',
           },
           {
             q: 'Can I watch a session live while Claude Code is running?',
