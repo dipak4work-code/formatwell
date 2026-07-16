@@ -43,5 +43,6 @@ new *.txt
 # claude code local settings
 .claude/
 
-# markdown docs (kept local, out of repo)
+# markdown docs (kept local, out of repo) — except the public README
 *.md
+!README.md
