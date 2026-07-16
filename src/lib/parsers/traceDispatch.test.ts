@@ -62,32 +62,38 @@ describe('parseCodexTrace', () => {
     expect(meta.version).toBe('0.48.0');
     expect(meta.gitBranch).toBe('main');
     expect(meta.models).toEqual(['gpt-5-codex']);
-    expect(meta.userTurns).toBe(1);
-    expect(meta.toolCalls).toBe(4);
-    expect(meta.toolErrors).toBe(1); // exit_code 1 on the failing test run
+    expect(meta.userTurns).toBe(2);
+    expect(meta.toolCalls).toBe(8);
+    expect(meta.toolErrors).toBe(1); // exit_code 1 on the locked-database migration run
     // Cumulative token totals from the token_count event.
-    expect(meta.usage.inputTokens).toBe(18240);
-    expect(meta.usage.cacheReadTokens).toBe(15360);
-    expect(meta.usage.outputTokens).toBe(1420);
+    expect(meta.usage.inputTokens).toBe(30480);
+    expect(meta.usage.cacheReadTokens).toBe(26200);
+    expect(meta.usage.outputTokens).toBe(2140);
   });
 
   it('links function_call to its output and flags exit_code errors', () => {
     const { trace } = parseCodexTrace(CODEX_TRACE_SAMPLE);
-    const assistant = trace!.turns.find((t) => t.kind === 'assistant')!;
-    const failing = assistant.toolCalls.find((c) => c.id === 'call_001')!;
+    const calls = trace!.turns.flatMap((t) => t.toolCalls);
+    const failing = calls.find((c) => c.id === 'call_007')!;
     expect(failing.name).toBe('shell');
     expect(failing.result!.isError).toBe(true);
-    expect(failing.result!.content).toContain('FAIL auth.spec.ts');
-    const passing = assistant.toolCalls.find((c) => c.id === 'call_004')!;
-    expect(passing.result!.isError).toBe(false);
+    expect(failing.result!.content).toContain('database is locked');
+    const recovery = calls.find((c) => c.id === 'call_008')!;
+    expect(recovery.result!.isError).toBe(false);
+    expect(recovery.result!.content).toContain('Migrated');
+    // Every call in the sample has a linked result.
+    expect(calls.every((c) => c.result !== undefined)).toBe(true);
   });
 
-  it('counts reasoning into thinkingChars and merges assistant text', () => {
+  it('counts reasoning into thinkingChars, merges assistant text, and keeps system markers', () => {
     const { trace } = parseCodexTrace(CODEX_TRACE_SAMPLE);
-    const assistant = trace!.turns.find((t) => t.kind === 'assistant')!;
-    expect(assistant.thinkingChars).toBeGreaterThan(0);
-    expect(assistant.text).toContain('212/212');
-    expect(assistant.model).toBe('gpt-5-codex');
+    const assistants = trace!.turns.filter((t) => t.kind === 'assistant');
+    expect(assistants.length).toBeGreaterThanOrEqual(2); // split by user turn + compaction
+    expect(assistants[0]!.thinkingChars).toBeGreaterThan(0);
+    expect(assistants[0]!.text).toContain('N+1');
+    expect(assistants[0]!.model).toBe('gpt-5-codex');
+    const compacted = trace!.turns.find((t) => t.kind === 'system')!;
+    expect(compacted.systemLabel).toBe('compacted');
   });
 
   it('marks synthetic wrapper prompts as meta', () => {

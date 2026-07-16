@@ -10,13 +10,19 @@ function sampleSession() {
 }
 
 describe('layoutTrace', () => {
-  it('creates a node per turn and per tool call', () => {
+  it('creates a node per turn and per tool call (meta turns included with showMeta)', () => {
     const session = sampleSession();
-    const g = layoutTrace(session);
+    const g = layoutTrace(session, true);
     const turnNodes = g.nodes.filter((n) => n.kind !== 'tool');
     const toolNodes = g.nodes.filter((n) => n.kind === 'tool');
     expect(turnNodes).toHaveLength(session.turns.length);
     expect(toolNodes).toHaveLength(session.meta.toolCalls);
+
+    // Default view hides meta user turns.
+    const metaTurns = session.turns.filter((t) => t.kind === 'user' && t.isMeta).length;
+    expect(metaTurns).toBeGreaterThan(0); // the sample demonstrates the toggle
+    const defaultTurnNodes = layoutTrace(session).nodes.filter((n) => n.kind !== 'tool');
+    expect(defaultTurnNodes).toHaveLength(session.turns.length - metaTurns);
   });
 
   it('lays turns top-down without overlaps', () => {
@@ -83,11 +89,12 @@ describe('layoutTrace', () => {
   it('honors showMeta=false by omitting meta user turns', () => {
     const withMetaLine = [
       AGENT_TRACE_SAMPLE,
-      '{"type":"user","uuid":"m1","isMeta":true,"message":{"role":"user","content":"<local-command-stdout>x</local-command-stdout>"}}',
+      '{"type":"user","uuid":"m-extra","isMeta":true,"message":{"role":"user","content":"<local-command-stdout>x</local-command-stdout>"}}',
     ].join('\n');
     const { trace } = parseAgentTrace(withMetaLine);
+    const metaTurns = trace!.turns.filter((t) => t.kind === 'user' && t.isMeta).length;
     const hidden = layoutTrace(trace!, false);
     const shown = layoutTrace(trace!, true);
-    expect(shown.nodes.length).toBe(hidden.nodes.length + 1);
+    expect(shown.nodes.length).toBe(hidden.nodes.length + metaTurns);
   });
 });
