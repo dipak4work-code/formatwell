@@ -24,7 +24,7 @@ export default function MarkdownPage() {
         intro={[
           'Write GitHub-flavored Markdown on the left and see a live, rendered preview on the right as you type. Tables, task lists, strikethrough, autolinked URLs, and fenced code blocks with syntax highlighting are all supported. The preview scroll position tracks the editor so you keep your place in long documents.',
           'Every preview is sanitized with DOMPurify before it is shown, so embedded scripts and event handlers are rendered inert — safe to paste untrusted Markdown. The lint panel uses the remark-lint recommended rules and flags issues such as bare URLs, heading levels that skip a rank, and links that reference an undefined definition, each as an advisory warning you can click to jump to.',
-          'Use the toolbar to load a sample, copy the rendered HTML (already sanitized), or download your document as a .md file. Everything runs in your browser — nothing you write is ever uploaded.',
+          'Use the toolbar to load a sample, copy the rendered HTML (already sanitized), or download your document as a .md file, a self-contained styled HTML page, or a formatted PDF. All exports — including the PDF, which is composed page by page in your browser — happen locally; nothing you write is ever uploaded.',
         ]}
         faqs={[
           {
@@ -37,7 +37,11 @@ export default function MarkdownPage() {
           },
           {
             q: 'Does “Copy as HTML” include styles?',
-            a: 'It copies the sanitized semantic HTML (headings, lists, tables, code). Apply your own CSS where you paste it. Your content is never sent to a server.',
+            a: 'It copies the sanitized semantic HTML (headings, lists, tables, code). Apply your own CSS where you paste it. If you want a ready-to-open page with styling included, use “Download HTML” instead — it produces a self-contained document with inline CSS and no external requests.',
+          },
+          {
+            q: 'How does the PDF download work?',
+            a: 'The Markdown is converted to a formatted A4 PDF entirely in your browser — headings, bold and italic text, inline code, code blocks, lists, quotes, tables, and page numbers. No server is involved and no external library is fetched; the pages are composed locally and assembled into the file on your device.',
           },
         ]}
       />

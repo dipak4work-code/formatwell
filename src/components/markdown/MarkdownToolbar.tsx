@@ -81,6 +81,38 @@ export function MarkdownToolbar({
       >
         Download .md
       </ToolButton>
+      <ToolButton
+        onClick={async () => {
+          const { markdownToStandaloneHtml, inferTitle } = await import('@/lib/markdown/exportHtml');
+          const title = inferTitle(source)
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/^-+|-+$/g, '')
+            .slice(0, 48);
+          downloadText(`${title || 'document'}.html`, markdownToStandaloneHtml(source), 'text/html');
+          toast('HTML downloaded', 'valid');
+        }}
+        disabled={!hasContent}
+        title="Download as a self-contained, sanitized HTML file"
+      >
+        Download HTML
+      </ToolButton>
+      <ToolButton
+        onClick={async () => {
+          toast('Building PDF…', 'neutral');
+          try {
+            const { downloadMarkdownPdf } = await import('@/lib/markdown/exportPdf');
+            await downloadMarkdownPdf(source);
+            toast('PDF downloaded', 'valid');
+          } catch {
+            toast('PDF export failed', 'invalid');
+          }
+        }}
+        disabled={!hasContent}
+        title="Download as a formatted PDF document"
+      >
+        Download PDF
+      </ToolButton>
       <ToolButton onClick={onClear}>Clear</ToolButton>
 
       <span

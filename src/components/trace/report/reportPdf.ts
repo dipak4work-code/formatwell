@@ -1,5 +1,5 @@
 import type { TraceSession, TraceTurn } from '@/lib/parsers/agentTrace';
-import { jpegPagesToPdf, type PdfPageImage } from './pdfWriter';
+import { jpegPagesToPdf, type PdfPageImage } from '@/lib/pdf/pdfWriter';
 import { downloadBlob } from '@/lib/utils/io';
 
 /**
