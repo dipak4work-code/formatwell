@@ -1,8 +1,10 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { JsonTool } from '@/components/json/JsonTool';
 import { ToolHelp } from '@/components/ToolHelp';
 import { ToolHeader } from '@/components/ToolHeader';
 import { TOOLS } from '@/lib/site';
+import { JSON_ERROR_GUIDES } from '@/lib/guides/jsonErrors';
 
 const tool = TOOLS.find((t) => t.id === 'json')!;
 
@@ -57,6 +59,22 @@ export default function JsonPage() {
           },
         ]}
       />
+
+      <section className="mt-8 flex max-w-3xl flex-col gap-3 border-t border-border pt-8">
+        <h2 className="font-mono text-section font-600 text-ink">Common JSON errors, explained</h2>
+        <ul className="grid gap-2 sm:grid-cols-2">
+          {JSON_ERROR_GUIDES.map((g) => (
+            <li key={g.slug}>
+              <Link
+                href={`/guides/${g.slug}`}
+                className="block rounded-md border border-border bg-surface px-3 py-2 font-mono text-label text-muted transition-colors duration-fade hover:border-accent hover:text-ink"
+              >
+                “{g.error}”
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </section>
     </div>
   );
 }
