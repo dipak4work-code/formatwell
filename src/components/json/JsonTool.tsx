@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { CodeEditor, type CodeEditorHandle } from '@/components/editor/CodeEditor';
 import { EditorToolbar } from '@/components/editor/EditorToolbar';
 import { SplitPane } from '@/components/panels/SplitPane';
+import { VSplitPane } from '@/components/panels/VSplitPane';
 import { StatusSpine } from '@/components/panels/StatusSpine';
 import { ErrorPanel } from '@/components/panels/ErrorPanel';
 import { JsonTree } from './JsonTree';
@@ -178,110 +179,121 @@ export function JsonTool() {
 
       <div className="flex h-[min(70vh,720px)] min-h-[440px] items-stretch gap-3">
         <StatusSpine verdict={verdict} summary={summary} />
-        <div className="flex min-h-0 flex-1 flex-col gap-3">
-          <SplitPane
-            leftLabel="JSON input"
-            rightLabel="Output and tree"
-            left={
-              <div className="flex h-full flex-col overflow-hidden rounded-md border border-border">
-                <div className="border-b border-border px-3 py-1.5 font-mono text-label text-muted">
-                  Input
-                </div>
-                <div className="min-h-0 flex-1">
-                  <CodeEditor
-                    ref={editorRef}
-                    value={input}
-                    onChange={setInput}
-                    language="json"
-                    errors={errors}
-                    placeholder={PLACEHOLDER}
-                    ariaLabel="JSON input editor"
-                    onValidate={handleValidate}
-                    onFormat={handleFormat}
-                  />
-                </div>
-              </div>
-            }
-            right={
-              <div className="flex h-full flex-col overflow-hidden rounded-md border border-border">
-                <div
-                  role="tablist"
-                  aria-label="Output view"
-                  className="flex items-center gap-1 border-b border-border px-2 py-1"
-                >
-                  {(['output', 'tree'] as Tab[]).map((t) => (
-                    <button
-                      key={t}
-                      role="tab"
-                      aria-selected={tab === t}
-                      onClick={() => setTab(t)}
-                      className={
-                        'rounded px-2.5 py-1 font-mono text-label capitalize transition-colors duration-fade ' +
-                        (tab === t ? 'bg-accent/10 text-accent' : 'text-muted hover:text-ink')
-                      }
-                    >
-                      {t}
-                    </button>
-                  ))}
-                  {tab === 'tree' && parsed !== undefined && (
-                    <div className="ml-auto flex gap-1">
-                      <button
-                        onClick={() => {
-                          setTreeAllOpen(true);
-                          setTreeReset((n) => n + 1);
-                        }}
-                        className="rounded border border-border px-2 py-0.5 font-mono text-label text-muted hover:text-ink"
-                      >
-                        Expand all
-                      </button>
-                      <button
-                        onClick={() => {
-                          setTreeAllOpen(false);
-                          setTreeReset((n) => n + 1);
-                        }}
-                        className="rounded border border-border px-2 py-0.5 font-mono text-label text-muted hover:text-ink"
-                      >
-                        Collapse all
-                      </button>
+        <div className="flex min-h-0 flex-1 flex-col">
+          <VSplitPane
+            topLabel="Editor and output"
+            bottomLabel="Errors"
+            top={
+              <SplitPane
+                leftLabel="JSON input"
+                rightLabel="Output and tree"
+                left={
+                  <div className="flex h-full flex-col overflow-hidden rounded-md border border-border">
+                    <div className="border-b border-border px-3 py-1.5 font-mono text-label text-muted">
+                      Input
                     </div>
-                  )}
-                </div>
-
-                <div className="min-h-0 flex-1 overflow-auto">
-                  {tab === 'output' ? (
-                    output ? (
+                    <div className="min-h-0 flex-1">
                       <CodeEditor
-                        value={output}
+                        ref={editorRef}
+                        value={input}
+                        onChange={setInput}
                         language="json"
-                        readOnly
-                        ariaLabel="Formatted JSON output"
+                        errors={errors}
+                        placeholder={PLACEHOLDER}
+                        ariaLabel="JSON input editor"
+                        onValidate={handleValidate}
+                        onFormat={handleFormat}
                       />
-                    ) : (
-                      <p className="p-3 font-mono text-label text-muted">
-                        Valid JSON will appear here, formatted.
-                      </p>
-                    )
-                  ) : parsed !== undefined ? (
-                    <div className="p-3">
-                      <JsonTree value={parsed} resetSignal={treeReset} defaultOpen={treeAllOpen} />
                     </div>
-                  ) : (
-                    <p className="p-3 font-mono text-label text-muted">
-                      Fix the errors to explore the tree.
-                    </p>
-                  )}
-                </div>
+                  </div>
+                }
+                right={
+                  <div className="flex h-full flex-col overflow-hidden rounded-md border border-border">
+                    <div
+                      role="tablist"
+                      aria-label="Output view"
+                      className="flex items-center gap-1 border-b border-border px-2 py-1"
+                    >
+                      {(['output', 'tree'] as Tab[]).map((t) => (
+                        <button
+                          key={t}
+                          role="tab"
+                          aria-selected={tab === t}
+                          onClick={() => setTab(t)}
+                          className={
+                            'rounded px-2.5 py-1 font-mono text-label capitalize transition-colors duration-fade ' +
+                            (tab === t ? 'bg-accent/10 text-accent' : 'text-muted hover:text-ink')
+                          }
+                        >
+                          {t}
+                        </button>
+                      ))}
+                      {tab === 'tree' && parsed !== undefined && (
+                        <div className="ml-auto flex gap-1">
+                          <button
+                            onClick={() => {
+                              setTreeAllOpen(true);
+                              setTreeReset((n) => n + 1);
+                            }}
+                            className="rounded border border-border px-2 py-0.5 font-mono text-label text-muted hover:text-ink"
+                          >
+                            Expand all
+                          </button>
+                          <button
+                            onClick={() => {
+                              setTreeAllOpen(false);
+                              setTreeReset((n) => n + 1);
+                            }}
+                            className="rounded border border-border px-2 py-0.5 font-mono text-label text-muted hover:text-ink"
+                          >
+                            Collapse all
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="min-h-0 flex-1 overflow-auto">
+                      {tab === 'output' ? (
+                        output ? (
+                          <CodeEditor
+                            value={output}
+                            language="json"
+                            readOnly
+                            ariaLabel="Formatted JSON output"
+                          />
+                        ) : (
+                          <p className="p-3 font-mono text-label text-muted">
+                            Valid JSON will appear here, formatted.
+                          </p>
+                        )
+                      ) : parsed !== undefined ? (
+                        <div className="p-3">
+                          <JsonTree
+                            value={parsed}
+                            resetSignal={treeReset}
+                            defaultOpen={treeAllOpen}
+                          />
+                        </div>
+                      ) : (
+                        <p className="p-3 font-mono text-label text-muted">
+                          Fix the errors to explore the tree.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                }
+              />
+            }
+            bottom={
+              <div className="flex h-full flex-col overflow-hidden rounded-md border border-border bg-surface">
+                <ErrorPanel
+                  result={result}
+                  subject="JSON"
+                  onSelect={(issue) => editorRef.current?.scrollToLine(issue.line, issue.column)}
+                />
               </div>
             }
           />
-
-          <div className="rounded-md border border-border bg-surface">
-            <ErrorPanel
-              result={result}
-              subject="JSON"
-              onSelect={(issue) => editorRef.current?.scrollToLine(issue.line, issue.column)}
-            />
-          </div>
         </div>
       </div>
     </div>

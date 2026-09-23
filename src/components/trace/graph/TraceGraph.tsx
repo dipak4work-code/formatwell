@@ -71,12 +71,15 @@ export function TraceGraphView({
     if (!host) return;
     const g = graphRef.current;
     const { clientWidth, clientHeight } = host;
-    if (clientWidth === 0) return;
-    const scale = Math.min(
-      Math.max(Math.min(clientWidth / g.width, clientHeight / g.height), MIN_SCALE),
-      1,
-    );
-    setViewport({ x: (clientWidth - g.width * scale) / 2, y: 8, scale });
+    if (clientWidth === 0 || clientHeight === 0) return;
+    // No MIN_SCALE floor here: the whole graph must always fit on "Fit"/initial
+    // load, however tall it is. MIN_SCALE only bounds manual zoom-out below.
+    const scale = Math.max(Math.min(clientWidth / g.width, clientHeight / g.height, 1), 0.02);
+    setViewport({
+      x: (clientWidth - g.width * scale) / 2,
+      y: (clientHeight - g.height * scale) / 2,
+      scale,
+    });
   }, []);
 
   // Fit only when a new source loads — not on every live growth of the same session.
@@ -168,7 +171,7 @@ export function TraceGraphView({
   return (
     <div
       ref={hostRef}
-      className="relative h-full min-h-[420px] touch-none select-none overflow-hidden rounded-md bg-bg"
+      className="relative h-full min-h-0 touch-none select-none overflow-hidden rounded-md bg-bg"
     >
       <svg
         className="h-full w-full cursor-grab active:cursor-grabbing"

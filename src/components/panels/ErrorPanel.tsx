@@ -22,11 +22,7 @@ function formatStats(result: ParseResult): string {
 
 export function ErrorPanel({ result, onSelect, subject = 'input', okLabel }: ErrorPanelProps) {
   if (!result) {
-    return (
-      <p className="px-3 py-2 font-mono text-label text-muted">
-        Nothing validated yet.
-      </p>
-    );
+    return <p className="px-3 py-2 font-mono text-label text-muted">Nothing validated yet.</p>;
   }
 
   const errors = result.errors ?? [];
@@ -48,7 +44,7 @@ export function ErrorPanel({ result, onSelect, subject = 'input', okLabel }: Err
   const warnCount = errors.filter((e) => e.severity === 'warning').length;
 
   return (
-    <div className="flex flex-col">
+    <div className="flex h-full flex-col">
       <p className="border-b border-border px-3 py-2 font-mono text-label text-muted">
         {errorCount > 0 && (
           <span className="text-invalid">
@@ -62,13 +58,13 @@ export function ErrorPanel({ result, onSelect, subject = 'input', okLabel }: Err
           </span>
         )}
       </p>
-      <ul className="max-h-48 overflow-auto">
+      <ul className="min-h-0 flex-1 overflow-auto">
         {errors.map((issue, i) => (
           <li key={`${issue.line}:${issue.column}:${i}`}>
             <button
               type="button"
               onClick={() => onSelect?.(issue)}
-              className="flex w-full items-baseline gap-2 px-3 py-1.5 text-left font-mono text-label transition-colors duration-fade hover:bg-accent/10"
+              className="hover:bg-accent/10 flex w-full items-baseline gap-2 px-3 py-1.5 text-left font-mono text-label transition-colors duration-fade"
             >
               <span
                 className={

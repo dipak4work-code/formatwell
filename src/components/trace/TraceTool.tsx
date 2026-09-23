@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { StatusSpine } from '@/components/panels/StatusSpine';
+import { VSplitPane } from '@/components/panels/VSplitPane';
 import { ErrorPanel } from '@/components/panels/ErrorPanel';
 import { ToolButton } from '@/components/ui/ToolButton';
 import { useToast } from '@/components/ui/ToastProvider';
@@ -36,7 +37,9 @@ function Stat({ label, value, tone }: { label: string; value: string; tone?: 'in
   return (
     <div className="rounded-md border border-border bg-surface px-3 py-2">
       <p className="font-mono text-[11px] uppercase tracking-wide text-muted">{label}</p>
-      <p className={`font-mono text-section font-600 ${tone === 'invalid' ? 'text-invalid' : 'text-ink'}`}>
+      <p
+        className={`font-600 font-mono text-section ${tone === 'invalid' ? 'text-invalid' : 'text-ink'}`}
+      >
         {value}
       </p>
     </div>
@@ -59,6 +62,35 @@ export function TraceTool() {
   const [selected, setSelected] = useState<GraphNode | null>(null);
   const [fitKey, setFitKey] = useState(0);
 
+  // Full screen: pop the graph/timeline panel out to fill the whole display.
+  const panelRef = useRef<HTMLDivElement | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  useEffect(() => {
+    function onFullscreenChange() {
+      setIsFullscreen(document.fullscreenElement === panelRef.current);
+      // The panel's available size just changed drastically — re-fit the graph to it.
+      setFitKey((k) => k + 1);
+    }
+    document.addEventListener('fullscreenchange', onFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', onFullscreenChange);
+  }, []);
+
+  function toggleFullscreen() {
+    if (document.fullscreenElement) {
+      void document.exitFullscreen();
+    } else {
+      panelRef.current?.requestFullscreen().catch(() => {
+        toast('Full screen is not available right now', 'warn');
+      });
+    }
+  }
+
+  // Drag-and-drop onto the main panel. A counter (not a bool) survives dragenter/
+  // dragleave firing on nested children as the pointer moves across them.
+  const [dragActive, setDragActive] = useState(false);
+  const dragCounter = useRef(0);
+
   // Live watch (File System Access API, Chromium only).
   const [watching, setWatching] = useState<string | null>(null);
   const [follow, setFollow] = useState(true);
@@ -71,7 +103,17 @@ export function TraceTool() {
     busy: boolean;
   } | null>(null);
 
-  const canWatch = typeof window !== 'undefined' && 'showOpenFilePicker' in window;
+  // Start false so server and first client render agree (avoids hydration mismatch);
+  // the real feature check runs client-only, after mount.
+  const [canWatch, setCanWatch] = useState(false);
+  useEffect(() => {
+    setCanWatch('showOpenFilePicker' in window);
+  }, []);
+
+  const [canFullscreen, setCanFullscreen] = useState(false);
+  useEffect(() => {
+    setCanFullscreen(document.fullscreenEnabled ?? false);
+  }, []);
 
   // Step-by-step playback (graph view). playhead = revealed node count; null = full view.
   const [playhead, setPlayhead] = useState<number | null>(null);
@@ -246,6 +288,34 @@ export function TraceTool() {
     void load(r.text ?? '', file.name);
   }
 
+  function onDragEnter(e: React.DragEvent) {
+    if (!e.dataTransfer.types.includes('Files')) return;
+    e.preventDefault();
+    dragCounter.current++;
+    setDragActive(true);
+  }
+
+  function onDragOver(e: React.DragEvent) {
+    if (!e.dataTransfer.types.includes('Files')) return;
+    e.preventDefault(); // required to allow a drop
+  }
+
+  function onDragLeave(e: React.DragEvent) {
+    if (!e.dataTransfer.types.includes('Files')) return;
+    e.preventDefault();
+    dragCounter.current = Math.max(0, dragCounter.current - 1);
+    if (dragCounter.current === 0) setDragActive(false);
+  }
+
+  function onDrop(e: React.DragEvent) {
+    e.preventDefault();
+    dragCounter.current = 0;
+    setDragActive(false);
+    const file = e.dataTransfer.files?.[0];
+    if (!file) return;
+    void handleFile(file);
+  }
+
   function handleClear() {
     reqRef.current++;
     stopWatch(false);
@@ -344,7 +414,7 @@ export function TraceTool() {
         </span>
       </div>
 
-      <div className="flex h-[min(70vh,720px)] min-h-[440px] items-stretch gap-3">
+      <div className="flex h-[min(85vh,960px)] min-h-[560px] items-stretch gap-3">
         <StatusSpine verdict={verdict} summary={summary} />
         <div className="flex min-h-0 flex-1 flex-col gap-3">
           {meta && (
@@ -379,155 +449,198 @@ export function TraceTool() {
             </p>
           )}
 
-          <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-md border border-border bg-surface">
-            <div
-              role="tablist"
-              aria-label="Trace view"
-              className="flex items-center gap-1 border-b border-border px-2 py-1"
-            >
-              {(['graph', 'timeline'] as const).map((v) => (
-                <button
-                  key={v}
-                  role="tab"
-                  aria-selected={view === v}
-                  onClick={() => setView(v)}
-                  className={
-                    'rounded px-2.5 py-1 font-mono text-label capitalize transition-colors duration-fade ' +
-                    (view === v ? 'bg-accent/10 text-accent' : 'text-muted hover:text-ink')
-                  }
+          <VSplitPane
+            topLabel="Graph and timeline"
+            bottomLabel="Errors"
+            top={
+              <div
+                ref={panelRef}
+                onDragEnter={onDragEnter}
+                onDragOver={onDragOver}
+                onDragLeave={onDragLeave}
+                onDrop={onDrop}
+                className={
+                  'relative flex h-full flex-col overflow-hidden border-border bg-surface ' +
+                  (isFullscreen ? 'border-0' : 'rounded-md border')
+                }
+              >
+                {dragActive && (
+                  <div
+                    aria-hidden="true"
+                    className="bg-accent/10 pointer-events-none absolute inset-0 z-10 m-1.5 flex items-center justify-center rounded-md border-2 border-dashed border-accent"
+                  >
+                    <p className="font-600 font-mono text-body text-accent">
+                      Drop transcript file to load
+                    </p>
+                  </div>
+                )}
+                <div
+                  role="tablist"
+                  aria-label="Trace view"
+                  className="flex items-center gap-1 border-b border-border px-2 py-1"
                 >
-                  {v}
-                </button>
-              ))}
-            </div>
-
-            <div className="min-h-0 flex-1">
-              {trace && graph ? (
-                view === 'graph' ? (
-                  <div className="flex h-full min-h-[420px] flex-col gap-2 p-2">
-                    <div
-                      aria-label="Playback controls"
-                      className="flex flex-wrap items-center gap-1.5 rounded-md border border-border bg-bg px-2 py-1.5"
+                  {(['graph', 'timeline'] as const).map((v) => (
+                    <button
+                      key={v}
+                      role="tab"
+                      aria-selected={view === v}
+                      onClick={() => setView(v)}
+                      className={
+                        'rounded px-2.5 py-1 font-mono text-label capitalize transition-colors duration-fade ' +
+                        (view === v ? 'bg-accent/10 text-accent' : 'text-muted hover:text-ink')
+                      }
                     >
-                      <ToolButton
-                        onClick={() => {
-                          if (playing) {
-                            setPlaying(false);
-                          } else {
-                            if (playhead === null || playhead >= totalSteps) stepTo(0);
-                            setSelected(null);
-                            setPlaying(true);
-                          }
-                        }}
-                        primary
-                        title="Replay the session step by step"
-                      >
-                        {playing ? '⏸ Pause' : '▶ Play'}
-                      </ToolButton>
-                      <ToolButton
-                        onClick={() => {
-                          setPlaying(false);
-                          stepTo((playhead ?? 0) - 1);
-                        }}
-                        disabled={playhead === null || playhead <= 0}
-                        title="Step back"
-                      >
-                        ⏮
-                      </ToolButton>
-                      <ToolButton
-                        onClick={() => {
-                          setPlaying(false);
-                          stepTo((playhead ?? 0) + 1);
-                        }}
-                        disabled={playhead !== null && playhead >= totalSteps}
-                        title="Step forward"
-                      >
-                        ⏭
-                      </ToolButton>
-
-                      <input
-                        type="range"
-                        min={0}
-                        max={totalSteps}
-                        value={playhead ?? totalSteps}
-                        onChange={(e) => {
-                          setPlaying(false);
-                          stepTo(Number(e.target.value));
-                        }}
-                        aria-label="Playback position"
-                        className="min-w-24 flex-1 accent-[var(--accent)]"
-                      />
-                      <span className="font-mono text-label tabular-nums text-muted">
-                        {playhead ?? totalSteps}/{totalSteps}
-                      </span>
-
-                      <select
-                        value={String(speed)}
-                        onChange={(e) => setSpeed(Number(e.target.value))}
-                        aria-label="Playback speed"
-                        className="rounded border border-border bg-surface px-1.5 py-1 font-mono text-label text-ink"
-                      >
-                        <option value="0.5">0.5×</option>
-                        <option value="1">1×</option>
-                        <option value="2">2×</option>
-                        <option value="4">4×</option>
-                      </select>
-
-                      {playhead !== null && (
-                        <ToolButton onClick={exitPlayback} title="Show the full graph">
-                          Exit
-                        </ToolButton>
-                      )}
-                    </div>
-
-                    <div className="flex min-h-0 flex-1 flex-col gap-2 md:flex-row">
-                      <div className="min-h-0 min-w-0 flex-1">
-                        <TraceGraphView
-                          graph={graph}
-                          selectedId={selected?.id ?? null}
-                          onSelect={setSelected}
-                          fitKey={fitKey}
-                          followTail={watching !== null && follow}
-                          exportName={
-                            sourceName
-                              ? sourceName.replace(/\.(jsonl|ndjson|txt)$/i, '')
-                              : 'agent-trace'
-                          }
-                          revealCount={playhead ?? undefined}
-                        />
-                      </div>
-                      {selected && (
-                        <NodeDetail
-                          node={selected}
-                          session={trace}
-                          onClose={() => setSelected(null)}
-                        />
-                      )}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="h-full overflow-auto p-4">
-                    <TraceTimeline turns={trace.turns} showMeta={showMeta} />
-                  </div>
-                )
-              ) : (
-                <div className="flex h-full min-h-[280px] flex-col items-center justify-center gap-2 p-4 text-center">
-                  <p className="font-mono text-label text-muted">
-                    Upload an agent session transcript (.jsonl) to see its graph.
-                  </p>
-                  <p className="max-w-md font-mono text-[11px] leading-relaxed text-muted">
-                    Claude Code: ~/.claude/projects/&lt;project&gt;/&lt;session-id&gt;.jsonl ·
-                    Codex: ~/.codex/sessions/&lt;date&gt;/rollout-*.jsonl · other agents&apos;
-                    role/content chat JSONL also works — or try a sample.
-                  </p>
+                      {v}
+                    </button>
+                  ))}
+                  {canFullscreen && (
+                    <button
+                      type="button"
+                      onClick={toggleFullscreen}
+                      title={isFullscreen ? 'Exit full screen' : 'View full screen'}
+                      aria-pressed={isFullscreen}
+                      className="ml-auto rounded px-2.5 py-1 font-mono text-label text-muted transition-colors duration-fade hover:text-ink"
+                    >
+                      {isFullscreen ? '⤡ Exit full screen' : '⤢ Full screen'}
+                    </button>
+                  )}
                 </div>
-              )}
-            </div>
-          </div>
 
-          <div className="rounded-md border border-border bg-surface">
-            <ErrorPanel result={result} subject="transcript" okLabel="Transcript parsed" />
-          </div>
+                <div className="min-h-0 flex-1">
+                  {trace && graph ? (
+                    view === 'graph' ? (
+                      <div className="flex h-full min-h-0 flex-col gap-2 p-2">
+                        <div
+                          aria-label="Playback controls"
+                          className="flex flex-wrap items-center gap-1.5 rounded-md border border-border bg-bg px-2 py-1.5"
+                        >
+                          <ToolButton
+                            onClick={() => {
+                              if (playing) {
+                                setPlaying(false);
+                              } else {
+                                if (playhead === null || playhead >= totalSteps) stepTo(0);
+                                setSelected(null);
+                                setPlaying(true);
+                              }
+                            }}
+                            primary
+                            title="Replay the session step by step"
+                          >
+                            {playing ? '⏸ Pause' : '▶ Play'}
+                          </ToolButton>
+                          <ToolButton
+                            onClick={() => {
+                              setPlaying(false);
+                              stepTo((playhead ?? 0) - 1);
+                            }}
+                            disabled={playhead === null || playhead <= 0}
+                            title="Step back"
+                          >
+                            ⏮
+                          </ToolButton>
+                          <ToolButton
+                            onClick={() => {
+                              setPlaying(false);
+                              stepTo((playhead ?? 0) + 1);
+                            }}
+                            disabled={playhead !== null && playhead >= totalSteps}
+                            title="Step forward"
+                          >
+                            ⏭
+                          </ToolButton>
+
+                          <input
+                            type="range"
+                            min={0}
+                            max={totalSteps}
+                            value={playhead ?? totalSteps}
+                            onChange={(e) => {
+                              setPlaying(false);
+                              stepTo(Number(e.target.value));
+                            }}
+                            aria-label="Playback position"
+                            className="min-w-24 flex-1 accent-[var(--accent)]"
+                          />
+                          <span className="font-mono text-label tabular-nums text-muted">
+                            {playhead ?? totalSteps}/{totalSteps}
+                          </span>
+
+                          <select
+                            value={String(speed)}
+                            onChange={(e) => setSpeed(Number(e.target.value))}
+                            aria-label="Playback speed"
+                            className="rounded border border-border bg-surface px-1.5 py-1 font-mono text-label text-ink"
+                          >
+                            <option value="0.5">0.5×</option>
+                            <option value="1">1×</option>
+                            <option value="2">2×</option>
+                            <option value="4">4×</option>
+                          </select>
+
+                          {playhead !== null && (
+                            <ToolButton onClick={exitPlayback} title="Show the full graph">
+                              Exit
+                            </ToolButton>
+                          )}
+                        </div>
+
+                        <div className="flex min-h-0 flex-1 flex-col gap-2 md:flex-row">
+                          <div className="min-h-0 min-w-0 flex-1">
+                            <TraceGraphView
+                              graph={graph}
+                              selectedId={selected?.id ?? null}
+                              onSelect={setSelected}
+                              fitKey={fitKey}
+                              followTail={watching !== null && follow}
+                              exportName={
+                                sourceName
+                                  ? sourceName.replace(/\.(jsonl|ndjson|txt)$/i, '')
+                                  : 'agent-trace'
+                              }
+                              revealCount={playhead ?? undefined}
+                            />
+                          </div>
+                          {selected && (
+                            <NodeDetail
+                              node={selected}
+                              session={trace}
+                              onClose={() => setSelected(null)}
+                            />
+                          )}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="h-full overflow-auto p-4">
+                        <TraceTimeline turns={trace.turns} showMeta={showMeta} />
+                      </div>
+                    )
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="hover:bg-accent/5 flex h-full min-h-[280px] w-full flex-col items-center justify-center gap-2 p-4 text-center transition-colors duration-fade"
+                    >
+                      <p className="font-mono text-label text-muted">
+                        Click, drag and drop, or paste an agent session transcript (.jsonl) to see
+                        its graph.
+                      </p>
+                      <p className="max-w-md font-mono text-[11px] leading-relaxed text-muted">
+                        Claude Code: ~/.claude/projects/&lt;project&gt;/&lt;session-id&gt;.jsonl ·
+                        Codex: ~/.codex/sessions/&lt;date&gt;/rollout-*.jsonl · other agents&apos;
+                        role/content chat JSONL also works — or try a sample.
+                      </p>
+                    </button>
+                  )}
+                </div>
+              </div>
+            }
+            bottom={
+              <div className="flex h-full flex-col overflow-hidden rounded-md border border-border bg-surface">
+                <ErrorPanel result={result} subject="transcript" okLabel="Transcript parsed" />
+              </div>
+            }
+          />
         </div>
       </div>
 

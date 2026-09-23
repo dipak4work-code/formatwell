@@ -4,12 +4,18 @@ import { useEffect, useRef, useState } from 'react';
 import { CodeEditor, type CodeEditorHandle } from '@/components/editor/CodeEditor';
 import { JsonlToolbar } from './JsonlToolbar';
 import { SplitPane } from '@/components/panels/SplitPane';
+import { VSplitPane } from '@/components/panels/VSplitPane';
 import { StatusSpine } from '@/components/panels/StatusSpine';
 import { ErrorPanel } from '@/components/panels/ErrorPanel';
 import { JsonTree } from '@/components/json/JsonTree';
 import { useToast } from '@/components/ui/ToastProvider';
 import { JsonlProcessor } from '@/lib/workers/jsonlClient';
-import { arrayToJsonl, parseJsonlRecords, validateJsonl, type JsonlIndent } from '@/lib/parsers/jsonl';
+import {
+  arrayToJsonl,
+  parseJsonlRecords,
+  validateJsonl,
+  type JsonlIndent,
+} from '@/lib/parsers/jsonl';
 import { verdictFor, type ParseResult, type Verdict } from '@/lib/parsers/types';
 import { JSONL_SAMPLE } from '@/lib/samples/jsonl';
 
@@ -75,7 +81,9 @@ export function JsonlTool() {
     setRecords(parseJsonlRecords(text) as Json);
 
     const produced = await processor.process(
-      mode === 'array' ? { op: 'toArray', input: text, indent: ind } : { op: 'minify', input: text },
+      mode === 'array'
+        ? { op: 'toArray', input: text, indent: ind }
+        : { op: 'minify', input: text },
     );
     if (req !== reqRef.current) return;
     if (produced.ok && produced.formatted != null) setOutput(produced.formatted);
@@ -174,7 +182,9 @@ export function JsonlTool() {
             <select
               value={String(indent)}
               onChange={(e) =>
-                setIndent(e.target.value === 'tab' ? 'tab' : (Number(e.target.value) as JsonlIndent))
+                setIndent(
+                  e.target.value === 'tab' ? 'tab' : (Number(e.target.value) as JsonlIndent),
+                )
               }
               className="rounded border border-border bg-surface px-1.5 py-1 text-ink"
             >
@@ -188,109 +198,122 @@ export function JsonlTool() {
 
       <div className="flex h-[min(70vh,720px)] min-h-[440px] items-stretch gap-3">
         <StatusSpine verdict={verdict} summary={summary} />
-        <div className="flex min-h-0 flex-1 flex-col gap-3">
-          <SplitPane
-            leftLabel="JSONL input"
-            rightLabel="Output and tree"
-            left={
-              <div className="flex h-full flex-col overflow-hidden rounded-md border border-border">
-                <div className="border-b border-border px-3 py-1.5 font-mono text-label text-muted">
-                  Input
-                </div>
-                <div className="min-h-0 flex-1">
-                  <CodeEditor
-                    ref={editorRef}
-                    value={input}
-                    onChange={setInput}
-                    language="json"
-                    errors={errors}
-                    placeholder={PLACEHOLDER}
-                    ariaLabel="JSONL input editor"
-                    onValidate={handleValidate}
-                  />
-                </div>
-              </div>
-            }
-            right={
-              <div className="flex h-full flex-col overflow-hidden rounded-md border border-border">
-                <div
-                  role="tablist"
-                  aria-label="Output view"
-                  className="flex items-center gap-1 border-b border-border px-2 py-1"
-                >
-                  {(['output', 'tree'] as Tab[]).map((t) => (
-                    <button
-                      key={t}
-                      role="tab"
-                      aria-selected={tab === t}
-                      onClick={() => setTab(t)}
-                      className={
-                        'rounded px-2.5 py-1 font-mono text-label capitalize transition-colors duration-fade ' +
-                        (tab === t ? 'bg-accent/10 text-accent' : 'text-muted hover:text-ink')
-                      }
-                    >
-                      {t === 'output' ? `output (${outputMode === 'array' ? 'array' : 'jsonl'})` : 'tree'}
-                    </button>
-                  ))}
-                  {tab === 'tree' && records !== undefined && (
-                    <div className="ml-auto flex gap-1">
-                      <button
-                        onClick={() => {
-                          setTreeAllOpen(true);
-                          setTreeReset((n) => n + 1);
-                        }}
-                        className="rounded border border-border px-2 py-0.5 font-mono text-label text-muted hover:text-ink"
-                      >
-                        Expand all
-                      </button>
-                      <button
-                        onClick={() => {
-                          setTreeAllOpen(false);
-                          setTreeReset((n) => n + 1);
-                        }}
-                        className="rounded border border-border px-2 py-0.5 font-mono text-label text-muted hover:text-ink"
-                      >
-                        Collapse all
-                      </button>
+        <div className="flex min-h-0 flex-1 flex-col">
+          <VSplitPane
+            topLabel="Editor and output"
+            bottomLabel="Errors"
+            top={
+              <SplitPane
+                leftLabel="JSONL input"
+                rightLabel="Output and tree"
+                left={
+                  <div className="flex h-full flex-col overflow-hidden rounded-md border border-border">
+                    <div className="border-b border-border px-3 py-1.5 font-mono text-label text-muted">
+                      Input
                     </div>
-                  )}
-                </div>
-
-                <div className="min-h-0 flex-1 overflow-auto">
-                  {tab === 'output' ? (
-                    output ? (
+                    <div className="min-h-0 flex-1">
                       <CodeEditor
-                        value={output}
+                        ref={editorRef}
+                        value={input}
+                        onChange={setInput}
                         language="json"
-                        readOnly
-                        ariaLabel="JSONL output"
+                        errors={errors}
+                        placeholder={PLACEHOLDER}
+                        ariaLabel="JSONL input editor"
+                        onValidate={handleValidate}
                       />
-                    ) : (
-                      <p className="p-3 font-mono text-label text-muted">
-                        Valid JSONL will appear here.
-                      </p>
-                    )
-                  ) : records !== undefined ? (
-                    <div className="p-3">
-                      <JsonTree value={records} resetSignal={treeReset} defaultOpen={treeAllOpen} />
                     </div>
-                  ) : (
-                    <p className="p-3 font-mono text-label text-muted">
-                      Fix the errors to explore the records.
-                    </p>
-                  )}
-                </div>
+                  </div>
+                }
+                right={
+                  <div className="flex h-full flex-col overflow-hidden rounded-md border border-border">
+                    <div
+                      role="tablist"
+                      aria-label="Output view"
+                      className="flex items-center gap-1 border-b border-border px-2 py-1"
+                    >
+                      {(['output', 'tree'] as Tab[]).map((t) => (
+                        <button
+                          key={t}
+                          role="tab"
+                          aria-selected={tab === t}
+                          onClick={() => setTab(t)}
+                          className={
+                            'rounded px-2.5 py-1 font-mono text-label capitalize transition-colors duration-fade ' +
+                            (tab === t ? 'bg-accent/10 text-accent' : 'text-muted hover:text-ink')
+                          }
+                        >
+                          {t === 'output'
+                            ? `output (${outputMode === 'array' ? 'array' : 'jsonl'})`
+                            : 'tree'}
+                        </button>
+                      ))}
+                      {tab === 'tree' && records !== undefined && (
+                        <div className="ml-auto flex gap-1">
+                          <button
+                            onClick={() => {
+                              setTreeAllOpen(true);
+                              setTreeReset((n) => n + 1);
+                            }}
+                            className="rounded border border-border px-2 py-0.5 font-mono text-label text-muted hover:text-ink"
+                          >
+                            Expand all
+                          </button>
+                          <button
+                            onClick={() => {
+                              setTreeAllOpen(false);
+                              setTreeReset((n) => n + 1);
+                            }}
+                            className="rounded border border-border px-2 py-0.5 font-mono text-label text-muted hover:text-ink"
+                          >
+                            Collapse all
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="min-h-0 flex-1 overflow-auto">
+                      {tab === 'output' ? (
+                        output ? (
+                          <CodeEditor
+                            value={output}
+                            language="json"
+                            readOnly
+                            ariaLabel="JSONL output"
+                          />
+                        ) : (
+                          <p className="p-3 font-mono text-label text-muted">
+                            Valid JSONL will appear here.
+                          </p>
+                        )
+                      ) : records !== undefined ? (
+                        <div className="p-3">
+                          <JsonTree
+                            value={records}
+                            resetSignal={treeReset}
+                            defaultOpen={treeAllOpen}
+                          />
+                        </div>
+                      ) : (
+                        <p className="p-3 font-mono text-label text-muted">
+                          Fix the errors to explore the records.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                }
+              />
+            }
+            bottom={
+              <div className="flex h-full flex-col overflow-hidden rounded-md border border-border bg-surface">
+                <ErrorPanel
+                  result={result}
+                  subject="JSONL"
+                  onSelect={(issue) => editorRef.current?.scrollToLine(issue.line, issue.column)}
+                />
               </div>
             }
           />
-
-          <div className="rounded-md border border-border bg-surface">
-            <ErrorPanel
-              result={result}
-              subject="JSONL"
-              onSelect={(issue) => editorRef.current?.scrollToLine(issue.line, issue.column)}
-            />
-          </div>
         </div>
       </div>
     </div>

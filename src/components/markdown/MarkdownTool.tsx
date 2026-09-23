@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { CodeEditor, type CodeEditorHandle } from '@/components/editor/CodeEditor';
 import { SplitPane } from '@/components/panels/SplitPane';
+import { VSplitPane } from '@/components/panels/VSplitPane';
 import { StatusSpine } from '@/components/panels/StatusSpine';
 import { ErrorPanel } from '@/components/panels/ErrorPanel';
 import { MarkdownPreview } from './MarkdownPreview';
@@ -98,82 +99,89 @@ export function MarkdownTool() {
 
       <div className="flex h-[min(70vh,720px)] min-h-[440px] items-stretch gap-3">
         <StatusSpine verdict={verdict} summary={summary} />
-        <div className="flex min-h-0 flex-1 flex-col gap-3">
-          {editorCollapsed ? (
-            <div className="flex min-h-0 flex-1 items-stretch gap-2">
-              <button
-                type="button"
-                onClick={() => setEditorCollapsed(false)}
-                aria-expanded={false}
-                aria-label="Expand editor"
-                title="Expand editor"
-                className="flex w-9 shrink-0 flex-col items-center justify-center gap-3 rounded-md border border-border bg-surface text-muted transition-colors duration-fade hover:border-accent hover:text-accent"
-              >
-                <span aria-hidden="true">»</span>
-                <span className="font-mono text-label [writing-mode:vertical-rl]">Editor</span>
-              </button>
-              <div className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-md border border-border">
-                <div className="border-b border-border px-3 py-1.5 font-mono text-label text-muted">
-                  Preview
+        <div className="flex min-h-0 flex-1 flex-col">
+          <VSplitPane
+            topLabel="Editor and preview"
+            bottomLabel="Lint warnings"
+            top={
+              editorCollapsed ? (
+                <div className="flex min-h-0 flex-1 items-stretch gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setEditorCollapsed(false)}
+                    aria-expanded={false}
+                    aria-label="Expand editor"
+                    title="Expand editor"
+                    className="flex w-9 shrink-0 flex-col items-center justify-center gap-3 rounded-md border border-border bg-surface text-muted transition-colors duration-fade hover:border-accent hover:text-accent"
+                  >
+                    <span aria-hidden="true">»</span>
+                    <span className="font-mono text-label [writing-mode:vertical-rl]">Editor</span>
+                  </button>
+                  <div className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-md border border-border">
+                    <div className="border-b border-border px-3 py-1.5 font-mono text-label text-muted">
+                      Preview
+                    </div>
+                    <div className="min-h-0 flex-1">
+                      <MarkdownPreview ref={previewRef} source={previewSource} />
+                    </div>
+                  </div>
                 </div>
-                <div className="min-h-0 flex-1">
-                  <MarkdownPreview ref={previewRef} source={previewSource} />
-                </div>
+              ) : (
+                <SplitPane
+                  leftLabel="Markdown editor"
+                  rightLabel="Rendered preview"
+                  left={
+                    <div className="flex h-full flex-col overflow-hidden rounded-md border border-border">
+                      <div className="flex items-center justify-between border-b border-border px-3 py-1.5 font-mono text-label text-muted">
+                        Editor
+                        <button
+                          type="button"
+                          onClick={() => setEditorCollapsed(true)}
+                          aria-label="Collapse editor to widen the preview"
+                          title="Collapse editor to widen the preview"
+                          className="rounded border border-border px-1.5 leading-tight transition-colors duration-fade hover:border-accent hover:text-accent"
+                        >
+                          «
+                        </button>
+                      </div>
+                      <div className="min-h-0 flex-1">
+                        <CodeEditor
+                          ref={editorRef}
+                          value={input}
+                          onChange={setInput}
+                          language="markdown"
+                          errors={warnings}
+                          placeholder="Write Markdown here, or load a sample."
+                          ariaLabel="Markdown editor"
+                          onScrollRatio={syncPreviewScroll}
+                        />
+                      </div>
+                    </div>
+                  }
+                  right={
+                    <div className="flex h-full flex-col overflow-hidden rounded-md border border-border">
+                      <div className="border-b border-border px-3 py-1.5 font-mono text-label text-muted">
+                        Preview
+                      </div>
+                      <div className="min-h-0 flex-1">
+                        <MarkdownPreview ref={previewRef} source={previewSource} />
+                      </div>
+                    </div>
+                  }
+                />
+              )
+            }
+            bottom={
+              <div className="flex h-full flex-col overflow-hidden rounded-md border border-border bg-surface">
+                <ErrorPanel
+                  result={lint}
+                  subject="Markdown"
+                  okLabel="No lint warnings"
+                  onSelect={(issue) => editorRef.current?.scrollToLine(issue.line, issue.column)}
+                />
               </div>
-            </div>
-          ) : (
-            <SplitPane
-              leftLabel="Markdown editor"
-              rightLabel="Rendered preview"
-              left={
-                <div className="flex h-full flex-col overflow-hidden rounded-md border border-border">
-                  <div className="flex items-center justify-between border-b border-border px-3 py-1.5 font-mono text-label text-muted">
-                    Editor
-                    <button
-                      type="button"
-                      onClick={() => setEditorCollapsed(true)}
-                      aria-label="Collapse editor to widen the preview"
-                      title="Collapse editor to widen the preview"
-                      className="rounded border border-border px-1.5 leading-tight transition-colors duration-fade hover:border-accent hover:text-accent"
-                    >
-                      «
-                    </button>
-                  </div>
-                  <div className="min-h-0 flex-1">
-                    <CodeEditor
-                      ref={editorRef}
-                      value={input}
-                      onChange={setInput}
-                      language="markdown"
-                      errors={warnings}
-                      placeholder="Write Markdown here, or load a sample."
-                      ariaLabel="Markdown editor"
-                      onScrollRatio={syncPreviewScroll}
-                    />
-                  </div>
-                </div>
-              }
-              right={
-                <div className="flex h-full flex-col overflow-hidden rounded-md border border-border">
-                  <div className="border-b border-border px-3 py-1.5 font-mono text-label text-muted">
-                    Preview
-                  </div>
-                  <div className="min-h-0 flex-1">
-                    <MarkdownPreview ref={previewRef} source={previewSource} />
-                  </div>
-                </div>
-              }
-            />
-          )}
-
-          <div className="rounded-md border border-border bg-surface">
-            <ErrorPanel
-              result={lint}
-              subject="Markdown"
-              okLabel="No lint warnings"
-              onSelect={(issue) => editorRef.current?.scrollToLine(issue.line, issue.column)}
-            />
-          </div>
+            }
+          />
         </div>
       </div>
     </div>
