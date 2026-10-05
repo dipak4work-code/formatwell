@@ -1,7 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import type { TraceToolCall, TraceTurn } from '@/lib/parsers/agentTrace';
+import {
+  formatToolDuration,
+  toolCallDurationMs,
+  type TraceToolCall,
+  type TraceTurn,
+} from '@/lib/parsers/agentTrace';
 
 const TEXT_CLAMP = 600;
 const RESULT_CLAMP = 900;
@@ -39,6 +44,7 @@ function ToolCallRow({ call }: { call: TraceToolCall }) {
   const [open, setOpen] = useState(false);
   const failed = call.result?.isError === true;
   const pending = call.result === undefined;
+  const durationMs = toolCallDurationMs(call);
 
   return (
     <div className="rounded-md border border-border bg-bg">
@@ -53,6 +59,9 @@ function ToolCallRow({ call }: { call: TraceToolCall }) {
         </span>
         <span className={failed ? 'text-invalid' : 'text-accent'}>{call.name}</span>
         <span className="min-w-0 flex-1 truncate text-muted">{call.inputPreview}</span>
+        {durationMs !== undefined && (
+          <span className="shrink-0 text-muted">{formatToolDuration(durationMs)}</span>
+        )}
         {failed && <span className="shrink-0 text-invalid">error</span>}
         {pending && <span className="shrink-0 text-muted">no result</span>}
       </button>

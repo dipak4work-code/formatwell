@@ -22,6 +22,10 @@ export interface TraceToolCall {
   inputPreview: string;
   /** Full pretty JSON of the input for the expanded view. */
   input: string;
+  /** Timestamp of the record that issued the call (tool_use). */
+  startedAt?: string;
+  /** Timestamp of the record carrying its result (tool_result), once it arrives. */
+  endedAt?: string;
   result?: {
     /** Possibly long; UI truncates. */
     content: string;
@@ -274,6 +278,7 @@ export function parseAgentTrace(input: string): TraceParseOutput {
           if (isError) meta.toolErrors++;
           if (call) {
             call.result = { content: resultText(block.content), isError };
+            call.endedAt = ts;
             openCalls.delete(id);
           }
         }
@@ -354,6 +359,7 @@ export function parseAgentTrace(input: string): TraceParseOutput {
             name: typeof block.name === 'string' ? block.name : 'unknown',
             inputPreview: previewJson(block.input),
             input: prettyJson(block.input),
+            startedAt: ts,
           };
           current.toolCalls.push(call);
           openCalls.set(call.id, call);
@@ -378,4 +384,23 @@ export function parseAgentTrace(input: string): TraceParseOutput {
     result: { ok, errors, stats: stats() },
     trace: ok ? { turns, meta } : null,
   };
+}
+
+/** Wall-clock time between a tool call's invocation and its result, if both are known. */
+export function toolCallDurationMs(call: TraceToolCall): number | undefined {
+  if (!call.startedAt || !call.endedAt) return undefined;
+  const start = new Date(call.startedAt).getTime();
+  const end = new Date(call.endedAt).getTime();
+  if (!isFinite(start) || !isFinite(end) || end < start) return undefined;
+  return end - start;
+}
+
+/** Short human format for a tool call duration: "840ms", "2.3s", "1m 05s". */
+export function formatToolDuration(ms: number): string {
+  if (ms < 1000) return `${Math.round(ms)}ms`;
+  const totalSeconds = ms / 1000;
+  if (totalSeconds < 60) return `${totalSeconds.toFixed(1)}s`;
+  const mins = Math.floor(totalSeconds / 60);
+  const secs = Math.round(totalSeconds % 60);
+  return `${mins}m ${String(secs).padStart(2, '0')}s`;
 }

@@ -1,6 +1,6 @@
 'use client';
 
-import type { TraceSession } from '@/lib/parsers/agentTrace';
+import { formatToolDuration, toolCallDurationMs, type TraceSession } from '@/lib/parsers/agentTrace';
 import type { GraphNode } from './layout';
 
 function Section({ title, text, tone }: { title: string; text: string; tone?: 'invalid' }) {
@@ -31,6 +31,7 @@ export function NodeDetail({
   onClose: () => void;
 }) {
   const turn = node.turnIndex !== undefined ? session.turns[node.turnIndex] : undefined;
+  const durationMs = node.toolCall ? toolCallDurationMs(node.toolCall) : undefined;
 
   return (
     <aside
@@ -41,6 +42,9 @@ export function NodeDetail({
         <p className="min-w-0 font-mono text-label font-600 text-ink">
           <span className={node.isError ? 'text-invalid' : 'text-accent'}>{node.label}</span>
           {node.isSidechain && <span className="ml-2 text-muted">· subagent</span>}
+          {durationMs !== undefined && (
+            <span className="ml-2 text-muted">· took {formatToolDuration(durationMs)}</span>
+          )}
           {turn?.timestamp && (
             <span className="ml-2 text-muted">
               {new Date(turn.timestamp).toLocaleTimeString([], { hour12: false })}

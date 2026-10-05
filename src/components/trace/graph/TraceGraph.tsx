@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { edgePath, type GraphNode, type TraceGraph as Graph } from './layout';
 import { downloadGraphPng } from './exportImage';
 import { useToast } from '@/components/ui/ToastProvider';
+import { formatToolDuration, toolCallDurationMs } from '@/lib/parsers/agentTrace';
 
 interface Viewport {
   x: number;
@@ -198,6 +199,8 @@ export function TraceGraphView({
             const selected = n.id === selectedId;
             const isStep = n.id === stepNode?.id;
             const isTool = n.kind === 'tool';
+            const durationMs = isTool && n.toolCall ? toolCallDurationMs(n.toolCall) : undefined;
+            const durationText = durationMs !== undefined ? formatToolDuration(durationMs) : null;
             return (
               <g
                 key={n.id}
@@ -207,7 +210,7 @@ export function TraceGraphView({
                 onClick={() => onSelect(n)}
                 tabIndex={0}
                 role="button"
-                aria-label={`${n.label}: ${n.snippet}`}
+                aria-label={`${n.label}: ${n.snippet}${durationText ? ` (${durationText})` : ''}`}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === ' ') onSelect(n);
                 }}
@@ -272,7 +275,22 @@ export function TraceGraphView({
                     fontSize={10}
                     fill="var(--muted)"
                   >
-                    {n.snippet.slice(0, Math.max(0, 30 - n.label.length))}
+                    {n.snippet.slice(
+                      0,
+                      Math.max(0, 36 - n.label.length - (durationText ? durationText.length + 2 : 0)),
+                    )}
+                  </text>
+                )}
+                {isTool && durationText && (
+                  <text
+                    x={n.w - 8}
+                    y={n.h / 2 + 4}
+                    textAnchor="end"
+                    fontFamily="var(--font-mono), monospace"
+                    fontSize={9.5}
+                    fill="var(--muted)"
+                  >
+                    {durationText}
                   </text>
                 )}
                 {n.isSidechain && !isTool && (

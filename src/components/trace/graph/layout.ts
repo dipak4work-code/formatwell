@@ -47,7 +47,7 @@ export interface TraceGraph {
 
 export const TURN_W = 250;
 export const TURN_H = 54;
-export const TOOL_W = 220;
+export const TOOL_W = 260;
 export const TOOL_H = 32;
 const GAP_Y = 18;
 const TOOL_GAP_Y = 8;

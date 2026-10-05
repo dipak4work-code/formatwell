@@ -1,4 +1,9 @@
-import type { TraceSession, TraceTurn } from '@/lib/parsers/agentTrace';
+import {
+  formatToolDuration,
+  toolCallDurationMs,
+  type TraceSession,
+  type TraceTurn,
+} from '@/lib/parsers/agentTrace';
 import { jpegPagesToPdf, type PdfPageImage } from '@/lib/pdf/pdfWriter';
 import { downloadBlob } from '@/lib/utils/io';
 
@@ -252,13 +257,13 @@ function composeReport(trace: TraceSession, sourceName: string): PageComposer {
     for (const call of turn.toolCalls) {
       step++;
       const failed = call.result?.isError === true;
+      const durationMs = toolCallDurationMs(call);
       page.gap(3);
-      page.headerLine(`Step ${step} — tool: ${call.name}${failed ? '  ✗ error' : ''}`, {
-        size: 10.5,
-        color: failed ? C.invalid : C.ink,
-        bold: true,
-        indent: 14,
-      });
+      page.headerLine(
+        `Step ${step} — tool: ${call.name}${failed ? '  ✗ error' : ''}`,
+        { size: 10.5, color: failed ? C.invalid : C.ink, bold: true, indent: 14 },
+        durationMs !== undefined ? formatToolDuration(durationMs) : undefined,
+      );
       page.headerLine('input', { size: 8.5, color: C.muted, indent: 26 });
       page.block(call.input, { size: 9, color: C.ink, indent: 26, codeBg: true });
       if (call.result) {

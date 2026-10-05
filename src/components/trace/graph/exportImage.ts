@@ -1,5 +1,6 @@
 import { edgePath, type GraphNode, type TraceGraph } from './layout';
 import { downloadBlob } from '@/lib/utils/io';
+import { formatToolDuration, toolCallDurationMs } from '@/lib/parsers/agentTrace';
 
 /**
  * Graph → standalone image export. The live canvas paints with CSS variables, which
@@ -72,6 +73,8 @@ export function graphToSvgString(graph: TraceGraph, colors: ThemeColors): string
 
   for (const n of graph.nodes) {
     const isTool = n.kind === 'tool';
+    const durationMs = isTool && n.toolCall ? toolCallDurationMs(n.toolCall) : undefined;
+    const durationText = durationMs !== undefined ? formatToolDuration(durationMs) : null;
     parts.push(`<g transform="translate(${n.x} ${n.y})">`);
     parts.push(
       `<rect width="${n.w}" height="${n.h}" rx="${isTool ? 6 : 8}" fill="${colors.surface}" stroke="${nodeStroke(n, colors)}" stroke-width="1.5"/>`,
@@ -85,9 +88,15 @@ export function graphToSvgString(graph: TraceGraph, colors: ThemeColors): string
       );
     }
     if (isTool && n.snippet) {
-      const snippet = n.snippet.slice(0, Math.max(0, 30 - n.label.length));
+      const reserve = durationText ? durationText.length + 2 : 0;
+      const snippet = n.snippet.slice(0, Math.max(0, 36 - n.label.length - reserve));
       parts.push(
         `<text x="${10 + n.label.length * 7 + 10}" y="${n.h / 2 + 4}" font-size="10" fill="${colors.muted}">${esc(snippet)}</text>`,
+      );
+    }
+    if (isTool && durationText) {
+      parts.push(
+        `<text x="${n.w - 8}" y="${n.h / 2 + 4}" text-anchor="end" font-size="9.5" fill="${colors.muted}">${esc(durationText)}</text>`,
       );
     }
     if (n.isSidechain && !isTool) {

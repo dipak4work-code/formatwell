@@ -219,6 +219,7 @@ export function parseCodexTrace(input: string): TraceParseOutput {
         name: str(item.name) ?? 'tool',
         inputPreview: previewOf(pretty),
         input: pretty,
+        startedAt: ts,
       });
       return true;
     }
@@ -231,6 +232,7 @@ export function parseCodexTrace(input: string): TraceParseOutput {
         name: 'shell',
         inputPreview: previewOf(command),
         input: command,
+        startedAt: ts,
       });
       return true;
     }
@@ -243,6 +245,7 @@ export function parseCodexTrace(input: string): TraceParseOutput {
         name: 'web_search',
         inputPreview: previewOf(query),
         input: query,
+        startedAt: ts,
       });
       // Search calls carry status but no separate output record we can rely on.
       return true;
@@ -255,6 +258,7 @@ export function parseCodexTrace(input: string): TraceParseOutput {
       if (parsed.isError) meta.toolErrors++;
       if (call) {
         call.result = parsed;
+        call.endedAt = ts;
         openCalls.delete(id);
       }
       return true;

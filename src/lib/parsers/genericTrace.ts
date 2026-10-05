@@ -130,6 +130,7 @@ export function parseGenericTrace(input: string): TraceParseOutput {
       if (isError) meta.toolErrors++;
       if (call) {
         call.result = { content: contentText(msg.content), isError };
+        call.endedAt = ts;
         openCalls.delete(id);
       }
       continue;
@@ -166,6 +167,7 @@ export function parseGenericTrace(input: string): TraceParseOutput {
             name: (fn && str(fn.name)) ?? str(callRec.name) ?? 'tool',
             inputPreview: previewOf(pretty),
             input: pretty,
+            startedAt: ts,
           };
           current.toolCalls.push(call);
           openCalls.set(call.id, call);
